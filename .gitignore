@@ -1,0 +1,25 @@
+# Environments
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+
+# Raw input data, tracked separately / not committed via normal git (large binary
+# files -- data/ alone has individual .h5ad files over GitHub's 100MB per-file limit)
+Dataset/
+data/
+
+# Derived, regeneratable artifacts -- everything under outputs/ is produced by
+# scripts in src/, so none of it needs to be tracked
+outputs/
+checkpoints/
+
+# OS
+.DS_Store
+__MACOSX/
+
+# Editors
+.vscode/
+.idea/
