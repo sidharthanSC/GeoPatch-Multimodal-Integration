@@ -12,8 +12,11 @@ Dataset/
 data/
 
 # Derived, regeneratable artifacts -- everything under outputs/ is produced by
-# scripts in src/, so none of it needs to be tracked
-outputs/
+# scripts in src/, so none of it needs to be tracked, except its run-configuration
+# index (documentation, not a generated artifact). `outputs/*` (not `outputs/`) so the
+# exception below can actually re-include a file git would otherwise never look at.
+outputs/*
+!outputs/README.md
 checkpoints/
 
 # OS
