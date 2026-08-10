@@ -1,8 +1,8 @@
 # outputs/ — run index
 
-Every run below was produced by `python -m src.train.train --run-name <name> ...` (see
-`src/train/train.py`; run `--help` for the full flag list). For a given `<name>`, its
-artifacts are:
+The runs immediately below (`layer_projector*`) were produced by
+`python -m src.train.train --run-name <name> ...` (see `src/train/train.py`; run
+`--help` for the full flag list). For a given `<name>`, its artifacts are:
 
 - `checkpoints/<name>/{best.pt, last.pt, projector_final.pt}` — `best.pt` is selected by
   whichever `--best-metric` that run used (see table below); `last.pt` is simply the
@@ -72,6 +72,60 @@ early stopping actually engaging), is what drives the large accuracy jump for th
 `_similarity_gap` runs — not `positive_weight` on its own (compare `layer_projector_e200`
 vs. `layer_projector_e200_similarity_gap`: same `positive_weight=2.0`, only
 `best_metric` differs).
+
+## Cross-modal runs (`gene_emb` <-> image embedding, InfoNCE)
+
+Produced by `python -m src.cross_modal.train --image-key <img_emb|proj_emb> --run-name <name> ...`
+(see `src/cross_modal/train.py`; run `--help` for the full flag list; `outputs/cross_modal/`
+is a separate subtree, not `outputs/checkpoints|metrics|predictions/` used by the
+`src/train/` runs above). Each run trains **two** trainable projection heads
+(`src/cross_modal/model.py`) with a symmetric CLIP-style InfoNCE loss (in-batch
+negatives, learnable temperature) -- one maps `gene_emb` into a shared space, the other
+maps the chosen image-side embedding (`img_emb` or `proj_emb`) into the same space -- so
+each run produces two new embeddings, not one. Artifacts per `<name>`:
+
+- `checkpoints/<name>/{best.pt, last.pt}` -- `best.pt` selected by lowest `val_loss`.
+- `metrics/<name>_metrics.csv` -- one row per epoch (train/val loss and retrieval accuracy).
+- `predictions/<name>_embeddings.npz` -- `gene_projected` / `image_projected` (both 128-d)
+  for all 47,329 spots, plus `barcodes`, `section_ids`, `split` (`"train"`/`"val"`/`"test"`),
+  and `image_key` (which source this run used).
+
+Both runs used `test_unit=none` (no held-out test set this round -- 37,863 train /
+9,466 val, same split fraction as the gene encoder). `--test-unit {section,donor}` is
+wired in for a later run testing generalization to entirely unseen tissue (whole
+sections or whole 4-section donors, not just unseen spots) -- see the script's
+docstring.
+
+| run | image_key | best epoch | val_loss | val_retrieval_accuracy | train_retrieval_accuracy |
+|---|---|---|---|---|---|
+| `cross_modal_img_emb` | `img_emb` (raw, pre-projection) | 34 (early-stopped at 59) | 5.900 | 0.0102 | 0.0158 |
+| `cross_modal_proj_emb` | `proj_emb` (post layer-projection) | 85 (early-stopped at 110) | 5.883 | 0.0072 | 0.0088 |
+
+Both share: `hidden_dim=256`, `output_dim=128`, `dropout=0.1`, `batch_size=512`,
+`lr=3e-4`, `weight_decay=1e-4`, `patience=25`, `seed=0`. Random-chance baseline at this
+batch size is `loss=log(512)~=6.24`, `retrieval_accuracy~=1/512~=0.0020` -- both runs
+learned real (if modest) cross-modal alignment, well above chance, with no collapse.
+
+`img_emb` aligned noticeably better than `proj_emb` against `gene_emb` (train accuracy
+0.016 vs. 0.009, roughly double) despite `proj_emb`'s own layer-projection training
+being the "better" embedding by the k-NN-vs-layer measure above. Plausible reading:
+`proj_emb` was optimized specifically to cluster tightly *within* a cortical layer,
+which likely compresses away some of the per-spot distinguishing information a
+one-to-one retrieval task (this spot's gene profile vs. this exact spot's image, out of
+everyone else in the batch) needs -- squeezing out inter-layer spread doesn't
+necessarily help distinguish spot A from spot B within the same layer. `img_emb`, being
+less aggressively optimized toward one specific objective, apparently retained more of
+that spot-level signal.
+
+The four resulting embeddings live in `checkpoints/dlpfc.pkl`'s `obsm` (via
+`python -m src.cross_modal.attach_cross_modal_embeddings --embeddings-npz <path>`,
+same safe barcode-keyed write-verify-replace pattern as
+`src/gene_encoder/attach_gene_embeddings.py`), auto-named from `image_key`:
+
+| source run | gene-side key | image-side key |
+|---|---|---|
+| `cross_modal_img_emb` | `gene_emb_cm_img` | `img_emb_cm` |
+| `cross_modal_proj_emb` | `gene_emb_cm_proj` | `proj_emb_cm` |
 
 ## Other things under `outputs/`
 
