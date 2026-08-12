@@ -14,6 +14,15 @@ benchmarked against it or a similar baseline set.
 
 ## Current repository state — read this before assuming code exists
 
+**Read `PROGRESS.md` first** — it's the up-to-date, detailed log of the BYOL ->
+cross-modal -> multimodal-representation pipeline (`src/gene_encoder/`,
+`src/cross_modal/`, `src/multimodal/`) built on top of what's described below,
+including key findings (e.g. a BYOL collapse investigation and its fix) and exactly
+what's done vs. still open. The section below predates that work and is kept for the
+`src/train/`/`src/datasets/` history it still accurately describes, but `src/` is no
+longer "mostly a stub" — treat `PROGRESS.md` as the current source of truth for
+overall status.
+
 `src/` now exists but is still mostly a stub. What's actually implemented:
 
 - `src/datasets/dlpfc.py` — `DlpfcDataset`, a `torch.utils.data.Dataset` over all twelve DLPFC
