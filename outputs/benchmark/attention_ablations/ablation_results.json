@@ -1,0 +1,105 @@
+{
+  "A1_linear_gene": {
+    "accuracy": 0.45475033453060076,
+    "loss": 1.4666165911619895,
+    "n_params": 903,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 150
+  },
+  "A2_linear_image": {
+    "accuracy": 0.47418832312134657,
+    "loss": 1.397579257005839,
+    "n_params": 903,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 150
+  },
+  "A3_linear_bisector": {
+    "accuracy": 0.5022184660891612,
+    "loss": 1.325746511739697,
+    "n_params": 903,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 150
+  },
+  "A4_linear_concat": {
+    "accuracy": 0.5139094302415663,
+    "loss": 1.284115491093729,
+    "n_params": 1799,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 150
+  },
+  "A5_mlp_concat": {
+    "accuracy": 0.5415874357349109,
+    "loss": 1.20754004598579,
+    "n_params": 67591,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 150
+  },
+  "A6_mlp_bisector": {
+    "accuracy": 0.5241918444960912,
+    "loss": 1.2508926831447655,
+    "n_params": 34823,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 150
+  },
+  "A7_self_attention_only": {
+    "accuracy": 0.6191985351081062,
+    "loss": 1.0152918002464224,
+    "n_params": 133383,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 125
+  },
+  "A8_cross_attention_only": {
+    "accuracy": 0.6109585182055074,
+    "loss": 1.0396067332915835,
+    "n_params": 199687,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 91
+  },
+  "A9_full_current_model": {
+    "accuracy": 0.6081414184097471,
+    "loss": 1.0415641442429255,
+    "n_params": 265991,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 63
+  },
+  "A11_modality_dropout": {
+    "accuracy": 0.616874427776604,
+    "loss": 1.0250715656728508,
+    "n_params": 265991,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 74
+  },
+  "A12_unaligned_full_model": {
+    "accuracy": 0.6560321149376717,
+    "loss": 0.9302617410461922,
+    "n_params": 265991,
+    "n_train": 28160,
+    "n_val": 4970,
+    "n_test": 14199,
+    "best_epoch": 123
+  },
+  "A10_modality_shuffle_sanity_check": {
+    "loss": 2.5439677195478825,
+    "accuracy": 0.30142967814634836
+  }
+}

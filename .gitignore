@@ -17,6 +17,8 @@ data/
 # exception below can actually re-include a file git would otherwise never look at.
 outputs/*
 !outputs/README.md
+!outputs/benchmark/
+!outputs/benchmark/**
 checkpoints/
 
 # OS

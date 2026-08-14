@@ -127,6 +127,29 @@ same safe barcode-keyed write-verify-replace pattern as
 | `cross_modal_img_emb` | `gene_emb_cm_img` | `img_emb_cm` |
 | `cross_modal_proj_emb` | `gene_emb_cm_proj` | `proj_emb_cm` |
 
+## Benchmark suite (`outputs/benchmark/`)
+
+`src/benchmark/` implements steps 1-5 of `MODEL_BENCHMARK_REPORT.md`'s "Recommended
+Execution Order" against the frozen embeddings above; full results, methodology, and
+interpretation are in `MODEL_BENCHMARK_RESULTS.md` at the repo root. Outputs:
+
+- `table_a/{per_run_results.csv, summary_raw.csv, summary_refined.csv}` — per-section
+  domain-discovery clustering (representations R1-R11 x KMeans/GaussianMixture/Leiden x
+  10 seeds x 12 sections), raw and after one common spatial-refinement pass
+  (`python -m src.benchmark.per_section_eval`).
+- `attention_ablations/ablation_results.json` — the A1-A12 supervised fusion ablation
+  suite (`python -m src.benchmark.attention_ablations`).
+- `rendered_tables.md` — the above rendered to markdown
+  (`python -m src.benchmark.format_report_tables`), the source for
+  `MODEL_BENCHMARK_RESULTS.md`'s tables.
+
+Headline findings (see `MODEL_BENCHMARK_RESULTS.md` for full interpretation): the
+aligned bisector (R9) only clearly beats single-modality/dimension-matched fusion
+representations *after* spatial refinement; and cross-modal InfoNCE alignment actually
+*hurts* the supervised attention-fusion classifier (A12, unaligned inputs, 65.6%
+accuracy, beats A9's aligned 60.8%) — a direct negative result worth following up
+before extending this pipeline further.
+
 ## Other things under `outputs/`
 
 - `prelim/` — outputs from **before** the pairing-key fix described above (an early
