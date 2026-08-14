@@ -127,6 +127,34 @@ same safe barcode-keyed write-verify-replace pattern as
 | `cross_modal_img_emb` | `gene_emb_cm_img` | `img_emb_cm` |
 | `cross_modal_proj_emb` | `gene_emb_cm_proj` | `proj_emb_cm` |
 
+## Multimodal representation methods (`outputs/multimodal/`)
+
+`src/multimodal/` compares four ways of turning the aligned cross-modal pair
+(`gene_emb_cm_img` + `img_emb_cm`) into a per-spot classification of cortical layer,
+pooling all 12 sections together (unlike the per-section `outputs/benchmark/` suite
+above). Ground truth is `adata.obs["ground_truth"]`; the pooled majority-class
+baseline is 37.2% (`Layer_3`). Artifacts per method: `method<N>_<name>.npz` (labels,
+predictions/cluster ids, barcodes, section ids) + `method<N>_<name>_metrics.json`.
+
+| method | type | protocol | accuracy | ARI | NMI |
+|---|---|---|---:|---:|---:|
+| 1 — bisector + KMeans(7) (`bisector.py`) | unsupervised | pooled clustering | 32.2% | 0.090 | 0.163 |
+| 2a — log-Euclidean K-Means on per-spot covariance (`covariance_clustering.py`) | unsupervised | pooled clustering | 24.7% | 0.059 | 0.115 |
+| 2b — spectral clustering on covariance correlation vectors | unsupervised | — | not completed — killed repeatedly at full 47k-spot scale even with PCA(50) pre-reduction; abandoned, not attempted again | — | — |
+| 3 — Riemannian MDM (`riemannian_mdm.py`) | supervised | 70/30 stratified split (`n_train=33130`, `n_test=14199`) | 35.0% | — | — |
+| 4 — cross-attention + self-attention fusion (`attention_fusion.py`) | supervised | same 70/30 split, +internal val split | **60.8%** | — | — |
+
+All four are below the pooled majority baseline except method 4, which is the
+strongest result in this table by a wide margin. `covariance.py` builds the per-spot
+128x128 covariance in closed form (`Cov = 0.5*outer(image-gene, image-gene)`,
+epsilon-regularized since it's rank-1) rather than materializing all 47,329 matrices
+at once. These are **pooled** results — see `outputs/benchmark/`'s Table A below for
+the same representations evaluated per-section instead, which is a fairer comparison
+to the published DLPFC literature and tells a different, more nuanced story (e.g. the
+bisector only wins after spatial refinement, and alignment actively hurts method 4's
+architecture when compared against unaligned inputs — see A9 vs. A12 in
+`MODEL_BENCHMARK_RESULTS.md`).
+
 ## Benchmark suite (`outputs/benchmark/`)
 
 `src/benchmark/` implements steps 1-5 of `MODEL_BENCHMARK_REPORT.md`'s "Recommended
