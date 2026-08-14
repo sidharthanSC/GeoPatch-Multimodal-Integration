@@ -1,5 +1,53 @@
 # outputs/ — run index
 
+The fixed benchmark protocol is `MODEL_BENCHMARK_REPORT.md`, resumable execution state is
+`EXECUTION_CHECKPOINTS.md`, and generated result tables are maintained in
+`MULTIMODAL_EVALUATION_RESULTS.md`. New GBSSA and evaluation runs must be added here when
+their artifacts are verified; a planned run is not a completed artifact.
+
+## Evaluation artifacts
+
+| run | status | artifacts | result |
+|---|---|---|---|
+| `20260813_checkpoint_audit_v1` | verified | `outputs/evaluation/20260813_checkpoint_audit_v1/{audit.json,legacy_pooled_bisector.json,data/}` | 47,329 spots and seven embedding keys validated; pooled bisector reproduced at accuracy 0.322424, ARI 0.090455, NMI 0.162604 |
+| `20260813_existing_embeddings_kmeans_seed0_v1` | verified gate | `outputs/evaluation/20260813_existing_embeddings_kmeans_seed0_v1/clustering/` | one-seed per-section KMeans for R2-R11 |
+| `20260813_existing_embeddings_kmeans_10seeds_v1` | verified | `outputs/evaluation/20260813_existing_embeddings_kmeans_10seeds_v1/clustering/` | 10-seed per-section KMeans; aligned bisector median ARI 0.14187/NMI 0.23837 versus raw image ARI 0.15245/NMI 0.22667 |
+| `20260814_gbssa_r01_seed0_kmeans_seed0_v1` | verified gate | `outputs/evaluation/20260814_gbssa_r01_seed0_kmeans_seed0_v1/clustering/` | new gene BYOL + standard CLIP; bisector median ARI 0.14365/NMI 0.22207 |
+| `20260814_gbssa_r02_seed0_kmeans_seed0_v1` | negative | `outputs/evaluation/20260814_gbssa_r02_seed0_kmeans_seed0_v1/clustering/` | ratio 2 chance retrieval; bisector ARI 0.09225 |
+| `20260814_gbssa_r05_seed0_kmeans_seed0_v1` | negative | `outputs/evaluation/20260814_gbssa_r05_seed0_kmeans_seed0_v1/clustering/` | ratio 5 chance retrieval; bisector ARI 0.04597 |
+| `20260814_gbssa_r10_seed0_kmeans_seed0_v1` | negative | `outputs/evaluation/20260814_gbssa_r10_seed0_kmeans_seed0_v1/clustering/` | ratio 10 chance retrieval; bisector ARI 0.03790 |
+| `20260814_gbssa_r01_seed0_corrected_kmeans_10seeds_v1` | verified | `outputs/evaluation/20260814_gbssa_r01_seed0_corrected_kmeans_10seeds_v1/clustering/` | new-gene controls + standard CLIP; unaligned bisector median ARI 0.16323 versus aligned bisector 0.14706 |
+| `20260814_gbssa_r01_seed0_corrected_gmm_seed0_v1` | verified sensitivity | `outputs/evaluation/20260814_gbssa_r01_seed0_corrected_gmm_seed0_v1/clustering/` | PCA-30 sklearn GMM surrogate; aligned bisector median ARI 0.17200/NMI 0.26918 |
+| `20260814_gbssa_r01_seed0_corrected_kmeans_10seeds_v1/spatial_refinement` | verified sensitivity | `metrics.parquet`, `assignments.parquet`, `aggregate_summary.json` | common 6-NN strict-majority refinement; unaligned bisector ARI 0.19937, aligned bisector 0.18346 |
+| `20260814_alignment_diagnostics_v1` | verified diagnostic | `outputs/evaluation/20260814_alignment_diagnostics_v1/` | ratio 1 cosine gap 0.06063; ratio 1.1 effective rank collapsed to 1.88/2.47; ratio 5 effectively constant |
+| `20260814_seed0_random_spot_logistic_probe_gate_v2` | verified gate | `outputs/evaluation/20260814_seed0_random_spot_logistic_probe_gate_v2/` | aligned concatenation accuracy 0.5331, balanced accuracy 0.4167, macro-F1 0.4151 |
+| `20260814_gbssa_r01_seed0_attention_ablation_v1` | verified gate | `outputs/evaluation/20260814_gbssa_r01_seed0_attention_ablation_v1/` | self-attention-only accuracy 0.61251 beats parameter-matched concat MLP 0.52997 and full model 0.60532 |
+| `20260814_gbssa_r01_seed0_attention_legacy_seed1_v1` | verified gate | `outputs/evaluation/20260814_gbssa_r01_seed0_attention_legacy_seed1_v1/` | full model accuracy 0.60159 versus self-attention-only seed-1 accuracy 0.60666 |
+| `20260814_integration_151675_151676_v1` | verified common integration | `outputs/evaluation/20260814_integration_151675_151676_v1/` | aligned bisector best ARI 0.1120; aligned gene best local mixing |
+| `20260814_integration_151507_151508_151675_151676_v1` | verified common integration | `outputs/evaluation/20260814_integration_151507_151508_151675_151676_v1/` | unaligned concatenation best ARI 0.1509; aligned gene best local mixing |
+| `20260814_weighted_bisector_seed0_kmeans_10seeds_v1` | verified sensitivity | `outputs/evaluation/20260814_weighted_bisector_seed0_kmeans_10seeds_v1/clustering/` | full fixed-weight curve; gene/image 0.25/0.75 median ARI 0.16564 |
+
+## Gene BYOL GBSSA preparation
+
+| run/artifact | status | result |
+|---|---|---|
+| `shared_hvgs_gbssa.json` | verified | 3,000 joint batch-aware HVGs |
+| `spatial_knn_graph_gbssa.pkl` | verified | six within-section neighbors for 47,329 spots |
+| `gene_byol_gbssa_seed0` | verified | early stop epoch 105, best val loss 0.1368; non-collapsed 128-d embeddings exported |
+| `gene_byol_gbssa_seed1` | verified | early stop epoch 122, best val loss 0.1648; unaligned-bisector median ARI 0.14013 |
+| `gene_byol_gbssa_seed2` | verified | early stop epoch 117, best val loss 0.1468; unaligned-bisector median ARI 0.13869 |
+
+## GBSSA cross-modal runs
+
+All use `gene_byol_gbssa_seed0` against raw external `img_emb`, hidden/output dimensions 256/128, batch size 512, LR `3e-4`, and seed 0.
+
+| run | ratio | status | interpretation |
+|---|---:|---|---|
+| `gbssa_img_r01_seed0` | 1 | verified baseline | standard CLIP, above-chance retrieval |
+| `gbssa_img_r02_seed0` | 2 | rejected | alignment retrieval converged to chance |
+| `gbssa_img_r05_seed0` | 5 | rejected | alignment retrieval converged to chance |
+| `gbssa_img_r10_seed0` | 10 | rejected | alignment retrieval converged to chance |
+
 The runs immediately below (`layer_projector*`) were produced by
 `python -m src.train.train --run-name <name> ...` (see `src/train/train.py`; run
 `--help` for the full flag list). For a given `<name>`, its artifacts are:

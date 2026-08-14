@@ -18,12 +18,20 @@ pip install -e ".[dev]"
 pytest
 ```
 
+## Research Execution
+
+- `MODEL_BENCHMARK_REPORT.md` defines the fixed evaluation and literature-comparison protocol.
+- `EXECUTION_CHECKPOINTS.md` tracks resumable GBSSA training/evaluation phases and artifact paths.
+- `MULTIMODAL_EVALUATION_RESULTS.md` contains generated repository results as phases complete.
+- `outputs/README.md` is the run and artifact index.
+
 ## Layout
 
 - `src/datasets/` — `DlpfcDataset`, checkpointed to `checkpoints/dlpfc.pkl` (git-ignored,
   regenerate from `data/`).
-- `src/train/` — BYOL-style projection network trained on frozen histology-image
-  embeddings, paired by ground-truth cortical layer.
+- `src/train/` — label-assisted metric-learning projection network trained on frozen
+  histology-image embeddings, paired by ground-truth cortical layer; it is not the
+  external image BYOL trainer.
 - `src/gene_encoder/` — BYOL gene-expression encoder (masked-corruption + spatial-
   neighbor-smoothing views), producing `gene_emb` for the eventual cross-modal
   (image <-> gene expression) contrastive step.

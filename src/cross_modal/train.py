@@ -52,7 +52,12 @@ import torch
 from sklearn.model_selection import train_test_split
 
 from src.datasets.dlpfc import DlpfcDataset
-from src.cross_modal.model import CrossModalConfig, CrossModalModel, clip_loss, retrieval_accuracy
+from src.cross_modal.model import (
+    CrossModalConfig,
+    CrossModalModel,
+    gradient_balanced_clip_loss,
+    retrieval_accuracy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +74,7 @@ class TrainConfig:
     hidden_dim: int = 256
     output_dim: int = 128
     dropout: float = 0.1
+    same_spot_gradient_ratio: float = 1.0
 
     batch_size: int = 512
     num_epochs: int = 200
@@ -174,6 +180,7 @@ def run_epoch(
     log_every: int = 0,
     epoch: int = 0,
     num_epochs: int = 0,
+    same_spot_gradient_ratio: float = 1.0,
 ) -> Dict[str, float]:
     """One pass over ``indices`` (shuffled if ``train``). Batches smaller than 2 are
     skipped -- InfoNCE's in-batch negatives need more than one sample."""
@@ -183,7 +190,17 @@ def run_epoch(
     if train:
         rng.shuffle(order)
 
-    totals = {"loss": 0.0, "retrieval_accuracy": 0.0}
+    totals = {
+        "loss": 0.0,
+        "clip_loss": 0.0,
+        "attraction_loss": 0.0,
+        "weighted_attraction_loss": 0.0,
+        "paired_cosine": 0.0,
+        "hardest_negative_cosine": 0.0,
+        "positive_hardest_margin": 0.0,
+        "temperature": 0.0,
+        "retrieval_accuracy": 0.0,
+    }
     n_batches = 0
 
     for start in range(0, len(order), batch_size):
@@ -193,8 +210,23 @@ def run_epoch(
 
         with torch.set_grad_enabled(train):
             gene_proj, image_proj = model(gene_emb[batch_idx], image_emb[batch_idx])
-            loss = clip_loss(gene_proj, image_proj, model.logit_scale)
+            loss_output = gradient_balanced_clip_loss(
+                gene_proj,
+                image_proj,
+                model.logit_scale,
+                same_spot_gradient_ratio,
+            )
+            loss = loss_output.total
             accuracy = retrieval_accuracy(gene_proj, image_proj)
+
+            similarity = gene_proj @ image_proj.T
+            positive = similarity.diagonal()
+            negative_mask = ~torch.eye(
+                similarity.shape[0], dtype=torch.bool, device=similarity.device
+            )
+            hardest_gene = similarity.masked_fill(~negative_mask, -torch.inf).max(dim=1).values
+            hardest_image = similarity.masked_fill(~negative_mask, -torch.inf).max(dim=0).values
+            hardest_negative = (hardest_gene.mean() + hardest_image.mean()) / 2.0
 
         if train:
             optimizer.zero_grad(set_to_none=True)
@@ -203,6 +235,13 @@ def run_epoch(
             model.clamp_logit_scale()
 
         totals["loss"] += float(loss.item())
+        totals["clip_loss"] += float(loss_output.clip.item())
+        totals["attraction_loss"] += float(loss_output.attraction.item())
+        totals["weighted_attraction_loss"] += float(loss_output.weighted_attraction.item())
+        totals["paired_cosine"] += float(positive.mean().item())
+        totals["hardest_negative_cosine"] += float(hardest_negative.item())
+        totals["positive_hardest_margin"] += float((positive.mean() - hardest_negative).item())
+        totals["temperature"] += float(model.logit_scale.detach().exp().reciprocal().item())
         totals["retrieval_accuracy"] += accuracy
         n_batches += 1
         if train and log_every and n_batches % log_every == 0:
@@ -254,6 +293,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hidden-dim", type=int, default=defaults.hidden_dim)
     parser.add_argument("--output-dim", type=int, default=defaults.output_dim)
     parser.add_argument("--dropout", type=float, default=defaults.dropout)
+    parser.add_argument(
+        "--same-spot-gradient-ratio",
+        type=float,
+        default=defaults.same_spot_gradient_ratio,
+        help="GBSSA diagonal attraction/aggregate-repulsion score-gradient ratio; 1 is standard CLIP.",
+    )
 
     parser.add_argument("--batch-size", type=int, default=defaults.batch_size)
     parser.add_argument("--num-epochs", type=int, default=defaults.num_epochs)
@@ -327,14 +372,27 @@ def main() -> None:
 
     with metrics_path.open("w", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow(["epoch", "train_loss", "train_retrieval_accuracy", "val_loss", "val_retrieval_accuracy"])
+        metric_names = [
+            "loss", "clip_loss", "attraction_loss", "weighted_attraction_loss",
+            "paired_cosine", "hardest_negative_cosine", "positive_hardest_margin",
+            "temperature", "retrieval_accuracy",
+        ]
+        writer.writerow(
+            ["epoch"]
+            + [f"train_{name}" for name in metric_names]
+            + [f"val_{name}" for name in metric_names]
+        )
 
         for epoch in range(1, config.num_epochs + 1):
             train_metrics = run_epoch(
                 model, gene_emb, image_emb, train_idx, config.batch_size, rng, train=True,
                 optimizer=optimizer, log_every=config.log_every, epoch=epoch, num_epochs=config.num_epochs,
+                same_spot_gradient_ratio=config.same_spot_gradient_ratio,
             )
-            val_metrics = run_epoch(model, gene_emb, image_emb, val_idx, config.batch_size, rng, train=False)
+            val_metrics = run_epoch(
+                model, gene_emb, image_emb, val_idx, config.batch_size, rng, train=False,
+                same_spot_gradient_ratio=config.same_spot_gradient_ratio,
+            )
 
             logger.info(
                 "epoch %d/%d | train loss %.4f acc %.4f | val loss %.4f acc %.4f",
@@ -342,10 +400,11 @@ def main() -> None:
                 train_metrics["loss"], train_metrics["retrieval_accuracy"],
                 val_metrics["loss"], val_metrics["retrieval_accuracy"],
             )
-            writer.writerow([
-                epoch, train_metrics["loss"], train_metrics["retrieval_accuracy"],
-                val_metrics["loss"], val_metrics["retrieval_accuracy"],
-            ])
+            writer.writerow(
+                [epoch]
+                + [train_metrics[name] for name in metric_names]
+                + [val_metrics[name] for name in metric_names]
+            )
             file.flush()
 
             metrics = {"train": train_metrics, "val": val_metrics}

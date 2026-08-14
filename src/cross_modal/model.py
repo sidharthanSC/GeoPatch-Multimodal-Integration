@@ -116,6 +116,83 @@ def clip_loss(gene_proj: torch.Tensor, image_proj: torch.Tensor, logit_scale: to
     return (loss_gene_to_image + loss_image_to_gene) / 2.0
 
 
+@dataclass(frozen=True)
+class GradientBalancedLoss:
+    """GBSSA loss and detached components used for training diagnostics."""
+
+    total: torch.Tensor
+    clip: torch.Tensor
+    attraction: torch.Tensor
+    weighted_attraction: torch.Tensor
+
+
+def gradient_balanced_clip_loss_from_similarity(
+    similarity: torch.Tensor,
+    logit_scale: torch.Tensor,
+    same_spot_gradient_ratio: float,
+) -> GradientBalancedLoss:
+    """Symmetric CLIP with a precise same-spot score-gradient multiplier.
+
+    The standard symmetric CLIP loss gives the diagonal positive score an attraction
+    gradient equal in magnitude to the aggregate off-diagonal repulsion. This objective
+    preserves every CLIP negative gradient and adds a detached cosine-attraction term
+    so the diagonal score-gradient magnitude is ``same_spot_gradient_ratio`` times the
+    original value. A ratio of 1 is exactly the standard CLIP objective.
+    """
+    if similarity.ndim != 2 or similarity.shape[0] != similarity.shape[1]:
+        raise ValueError("similarity must be a square 2-D matrix")
+    if similarity.shape[0] < 2:
+        raise ValueError("GBSSA requires at least two spots so negatives are present")
+    if same_spot_gradient_ratio < 1.0 or not math.isfinite(same_spot_gradient_ratio):
+        raise ValueError("same_spot_gradient_ratio must be finite and >= 1")
+    if not torch.isfinite(similarity).all() or not torch.isfinite(logit_scale).all():
+        raise ValueError("similarity and logit_scale must contain only finite values")
+
+    logits = logit_scale.exp() * similarity
+    labels = torch.arange(logits.shape[0], device=logits.device)
+    base_clip = (
+        F.cross_entropy(logits, labels)
+        + F.cross_entropy(logits.T, labels)
+    ) / 2.0
+
+    row_probability = logits.softmax(dim=1).diagonal()
+    column_probability = logits.softmax(dim=0).diagonal()
+    base_positive_gradient = logit_scale.exp() * (
+        (1.0 - row_probability) + (1.0 - column_probability)
+    ) / 2.0
+    attraction_weights = (
+        (same_spot_gradient_ratio - 1.0) * base_positive_gradient
+    ).detach()
+
+    positive_cosine = similarity.diagonal()
+    attraction = (1.0 - positive_cosine).mean()
+    weighted_attraction = (
+        attraction_weights * (1.0 - positive_cosine)
+    ).mean()
+    total = base_clip + weighted_attraction
+    return GradientBalancedLoss(
+        total=total,
+        clip=base_clip.detach(),
+        attraction=attraction.detach(),
+        weighted_attraction=weighted_attraction.detach(),
+    )
+
+
+def gradient_balanced_clip_loss(
+    gene_proj: torch.Tensor,
+    image_proj: torch.Tensor,
+    logit_scale: torch.Tensor,
+    same_spot_gradient_ratio: float,
+) -> GradientBalancedLoss:
+    """Compute gradient-balanced same-spot CLIP from normalized modality vectors."""
+    if gene_proj.ndim != 2 or image_proj.ndim != 2 or gene_proj.shape != image_proj.shape:
+        raise ValueError("gene_proj and image_proj must be matching 2-D tensors")
+    similarity = gene_proj @ image_proj.T
+    return gradient_balanced_clip_loss_from_similarity(
+        similarity, logit_scale, same_spot_gradient_ratio
+    )
+
+
 @torch.no_grad()
 def retrieval_accuracy(gene_proj: torch.Tensor, image_proj: torch.Tensor) -> float:
     """Mean top-1 in-batch retrieval accuracy, both directions (a monitoring metric,
