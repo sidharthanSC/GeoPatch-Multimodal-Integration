@@ -1,4 +1,4 @@
-"""Cross-modal InfoNCE training between ``gene_emb`` and an image-side embedding.
+"""Cross-modal alignment between ``gene_emb`` and an image-side embedding.
 
 Run once per image-side source (``--image-key img_emb`` or ``--image-key proj_emb``) --
 these are two independent trainings, not one multi-task run, since ``img_emb`` (raw,
@@ -42,6 +42,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import logging
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -56,7 +57,13 @@ from src.cross_modal.model import (
     CrossModalConfig,
     CrossModalModel,
     gradient_balanced_clip_loss,
+    positive_neighborhood_loss,
     retrieval_accuracy,
+)
+from src.cross_modal.neighborhood import (
+    NeighborhoodPruningConfig,
+    SplitNeighborhoodGraph,
+    build_split_neighborhood_graph,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,12 +76,24 @@ class TrainConfig:
     run_name: str = ""
 
     gene_key: str = "gene_emb"
+    gene_npz_path: Path | None = None
+    gene_array_key: str = "embeddings"
     image_key: str = "img_emb"
+    objective: str = "positive_neighborhood"
 
     hidden_dim: int = 256
     output_dim: int = 128
     dropout: float = 0.1
     same_spot_gradient_ratio: float = 1.0
+    coordinate_neighbors: int = 6
+    retained_neighbors: int = 3
+    min_gene_cosine: float | None = None
+    min_image_cosine: float | None = None
+    alignment_weight: float = 25.0
+    neighbor_weight: float = 1.0
+    variance_weight: float = 25.0
+    variance_gamma: float = 1.0
+    covariance_weight: float = 1.0
 
     batch_size: int = 512
     num_epochs: int = 200
@@ -122,6 +141,71 @@ def load_embeddings(
         np.concatenate(image_blocks, axis=0),
         np.concatenate(barcode_blocks, axis=0),
         np.concatenate(section_id_blocks, axis=0),
+    )
+
+
+def load_external_gene_embeddings(
+    dataset: DlpfcDataset,
+    gene_npz_path: Path,
+    gene_array_key: str,
+    image_key: str,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Load a gene array from NPZ and reconcile it by ``(section_id, barcode)``."""
+    with np.load(gene_npz_path, allow_pickle=True) as artifact:
+        required = {gene_array_key, "barcodes", "section_ids"}
+        missing = required.difference(artifact.files)
+        if missing:
+            raise KeyError(f"Missing external gene artifact arrays: {sorted(missing)}")
+        source_gene = np.asarray(artifact[gene_array_key], dtype=np.float32)
+        source_barcodes = np.asarray(artifact["barcodes"]).astype(str)
+        source_sections = np.asarray(artifact["section_ids"]).astype(str)
+
+    if source_gene.ndim != 2:
+        raise ValueError(f"{gene_array_key} must be 2-D, got {source_gene.shape}")
+    if not np.isfinite(source_gene).all():
+        raise ValueError(f"{gene_array_key} contains non-finite values")
+    if not (len(source_gene) == len(source_barcodes) == len(source_sections)):
+        raise ValueError("External gene arrays have inconsistent row counts")
+
+    source_identities = list(zip(source_sections.tolist(), source_barcodes.tolist()))
+    if len(set(source_identities)) != len(source_identities):
+        raise ValueError("External gene artifact contains duplicate (section_id, barcode) identities")
+    source_lookup = {identity: index for index, identity in enumerate(source_identities)}
+
+    image_blocks, barcode_blocks, section_blocks, source_indices = [], [], [], []
+    expected_identities = []
+    for section_id in dataset.section_ids():
+        adata = dataset.get_section(section_id)
+        barcodes = np.asarray(adata.obs_names).astype(str)
+        identities = [(str(section_id), barcode) for barcode in barcodes]
+        expected_identities.extend(identities)
+        image_blocks.append(np.asarray(adata.obsm[image_key], dtype=np.float32))
+        barcode_blocks.append(barcodes)
+        section_blocks.append(np.full(adata.n_obs, str(section_id), dtype=object))
+        for identity in identities:
+            if identity not in source_lookup:
+                raise ValueError(f"External gene artifact is missing spot {identity}")
+            source_indices.append(source_lookup[identity])
+
+    extras = set(source_lookup).difference(expected_identities)
+    if extras:
+        raise ValueError(f"External gene artifact contains {len(extras)} unexpected spots")
+    return (
+        source_gene[np.asarray(source_indices)],
+        np.concatenate(image_blocks),
+        np.concatenate(barcode_blocks),
+        np.concatenate(section_blocks),
+    )
+
+
+def load_spatial_coordinates(dataset: DlpfcDataset) -> np.ndarray:
+    """Spot coordinates in the exact row order returned by :func:`load_embeddings`."""
+    return np.concatenate(
+        [
+            np.asarray(dataset.get_section(section_id).obsm["spatial"], dtype=np.float32)
+            for section_id in dataset.section_ids()
+        ],
+        axis=0,
     )
 
 
@@ -253,6 +337,130 @@ def run_epoch(
     return {key: value / max(n_batches, 1) for key, value in totals.items()}
 
 
+def make_anchor_batch(
+    anchors: np.ndarray, neighbors: tuple[np.ndarray, ...]
+) -> tuple[np.ndarray, torch.Tensor, torch.Tensor]:
+    """Gather unique anchors/neighbors and express positive edges in local positions."""
+    gathered = [int(row) for row in anchors]
+    local_position = {row: position for position, row in enumerate(gathered)}
+    edge_sources: list[int] = []
+    edge_targets: list[int] = []
+    for source_position, source in enumerate(gathered.copy()):
+        for target_value in neighbors[source]:
+            target = int(target_value)
+            if target not in local_position:
+                local_position[target] = len(gathered)
+                gathered.append(target)
+            edge_sources.append(source_position)
+            edge_targets.append(local_position[target])
+    edges = torch.tensor([edge_sources, edge_targets], dtype=torch.long)
+    return (
+        np.asarray(gathered, dtype=np.int64),
+        torch.arange(len(anchors), dtype=torch.long),
+        edges,
+    )
+
+
+def run_positive_neighborhood_epoch(
+    model: CrossModalModel,
+    gene_emb: torch.Tensor,
+    image_emb: torch.Tensor,
+    indices: np.ndarray,
+    graph: SplitNeighborhoodGraph,
+    batch_size: int,
+    rng: np.random.Generator,
+    train: bool,
+    optimizer: torch.optim.Optimizer | None = None,
+    alignment_weight: float = 25.0,
+    neighbor_weight: float = 1.0,
+    variance_weight: float = 25.0,
+    variance_gamma: float = 1.0,
+    covariance_weight: float = 1.0,
+) -> Dict[str, float]:
+    """Positive-only alignment over same spots and retained spatial neighbors."""
+    model.train() if train else model.eval()
+    order = indices.copy()
+    if train:
+        rng.shuffle(order)
+    totals = {
+        "loss": 0.0,
+        "self_alignment_loss": 0.0,
+        "neighbor_alignment_loss": 0.0,
+        "gene_variance_loss": 0.0,
+        "image_variance_loss": 0.0,
+        "gene_covariance_loss": 0.0,
+        "image_covariance_loss": 0.0,
+        "self_positive_cosine": 0.0,
+        "neighbor_positive_cosine": 0.0,
+        "gene_std_mean": 0.0,
+        "image_std_mean": 0.0,
+    }
+    n_batches = 0
+    for start in range(0, len(order), batch_size):
+        anchors = order[start : start + batch_size]
+        if len(anchors) < 2:
+            continue
+        gathered, anchor_positions, neighbor_edges = make_anchor_batch(
+            anchors, graph.neighbors
+        )
+        anchor_positions = anchor_positions.to(gene_emb.device)
+        neighbor_edges = neighbor_edges.to(gene_emb.device)
+        with torch.set_grad_enabled(train):
+            gene_raw, image_raw = model.project_raw(
+                gene_emb[gathered], image_emb[gathered]
+            )
+            output = positive_neighborhood_loss(
+                gene_raw,
+                image_raw,
+                anchor_positions,
+                neighbor_edges,
+                alignment_weight=alignment_weight,
+                neighbor_weight=neighbor_weight,
+                variance_weight=variance_weight,
+                variance_gamma=variance_gamma,
+                covariance_weight=covariance_weight,
+            )
+            gene_normalized = torch.nn.functional.normalize(gene_raw, dim=1)
+            image_normalized = torch.nn.functional.normalize(image_raw, dim=1)
+            self_cosine = (
+                gene_normalized[anchor_positions] * image_normalized[anchor_positions]
+            ).sum(dim=1).mean()
+            if neighbor_edges.shape[1]:
+                source, target = neighbor_edges
+                neighbor_cosine = (
+                    (gene_normalized[source] * image_normalized[target]).sum(dim=1).mean()
+                    + (image_normalized[source] * gene_normalized[target]).sum(dim=1).mean()
+                ) / 2.0
+            else:
+                neighbor_cosine = gene_raw.new_zeros(())
+        if train:
+            if optimizer is None:
+                raise ValueError("optimizer is required for a training epoch")
+            optimizer.zero_grad(set_to_none=True)
+            output.total.backward()
+            optimizer.step()
+
+        gene_anchor = gene_normalized[anchor_positions]
+        image_anchor = image_normalized[anchor_positions]
+        values = {
+            "loss": output.total,
+            "self_alignment_loss": output.self_alignment,
+            "neighbor_alignment_loss": output.neighbor_alignment,
+            "gene_variance_loss": output.gene_variance,
+            "image_variance_loss": output.image_variance,
+            "gene_covariance_loss": output.gene_covariance,
+            "image_covariance_loss": output.image_covariance,
+            "self_positive_cosine": self_cosine,
+            "neighbor_positive_cosine": neighbor_cosine,
+            "gene_std_mean": gene_anchor.std(dim=0).mean(),
+            "image_std_mean": image_anchor.std(dim=0).mean(),
+        }
+        for name, value in values.items():
+            totals[name] += float(value.detach().item())
+        n_batches += 1
+    return {key: value / max(n_batches, 1) for key, value in totals.items()}
+
+
 @torch.no_grad()
 def export_embeddings(
     model: CrossModalModel, gene_emb: torch.Tensor, image_emb: torch.Tensor, batch_size: int = 4096
@@ -285,9 +493,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-name", type=str, default=defaults.run_name)
 
     parser.add_argument("--gene-key", type=str, default=defaults.gene_key)
+    parser.add_argument("--gene-npz-path", type=Path, default=defaults.gene_npz_path)
+    parser.add_argument("--gene-array-key", type=str, default=defaults.gene_array_key)
     parser.add_argument(
         "--image-key", type=str, default=defaults.image_key, choices=["img_emb", "proj_emb"],
         help="Which image-side embedding to align gene_emb against.",
+    )
+    parser.add_argument(
+        "--objective",
+        choices=["positive_neighborhood", "clip"],
+        default=defaults.objective,
+        help="Positive-only graph alignment (default) or the retained CLIP/GBSSA baseline.",
     )
 
     parser.add_argument("--hidden-dim", type=int, default=defaults.hidden_dim)
@@ -299,6 +515,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=defaults.same_spot_gradient_ratio,
         help="GBSSA diagonal attraction/aggregate-repulsion score-gradient ratio; 1 is standard CLIP.",
     )
+    parser.add_argument("--coordinate-neighbors", type=int, default=defaults.coordinate_neighbors)
+    parser.add_argument("--retained-neighbors", type=int, default=defaults.retained_neighbors)
+    parser.add_argument("--min-gene-cosine", type=float, default=defaults.min_gene_cosine)
+    parser.add_argument("--min-image-cosine", type=float, default=defaults.min_image_cosine)
+    parser.add_argument("--alignment-weight", type=float, default=defaults.alignment_weight)
+    parser.add_argument("--neighbor-weight", type=float, default=defaults.neighbor_weight)
+    parser.add_argument("--variance-weight", type=float, default=defaults.variance_weight)
+    parser.add_argument("--variance-gamma", type=float, default=defaults.variance_gamma)
+    parser.add_argument("--covariance-weight", type=float, default=defaults.covariance_weight)
 
     parser.add_argument("--batch-size", type=int, default=defaults.batch_size)
     parser.add_argument("--num-epochs", type=int, default=defaults.num_epochs)
@@ -324,11 +549,14 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    config = TrainConfig(**vars(build_arg_parser().parse_args()))
+def train_cross_modal(config: TrainConfig) -> Path:
+    """Train one configured alignment run and return its embedding artifact path."""
     if not config.run_name:
-        config.run_name = f"cross_modal_{config.image_key}"
+        config.run_name = f"{config.objective}_{config.image_key}"
+    predictions_path = config.output_dir / "predictions" / f"{config.run_name}_embeddings.npz"
+    checkpoint_dir = config.output_dir / "checkpoints" / config.run_name
+    if predictions_path.exists() or checkpoint_dir.exists():
+        raise FileExistsError(f"Refusing to overwrite cross-modal run {config.run_name}")
 
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
@@ -338,10 +566,20 @@ def main() -> None:
     logger.info("Loading dataset checkpoint: %s", config.checkpoint_path)
     dataset = DlpfcDataset.from_checkpoint(config.checkpoint_path)
 
-    gene_np, image_np, barcodes, section_ids = load_embeddings(dataset, config.gene_key, config.image_key)
+    if config.gene_npz_path is None:
+        gene_np, image_np, barcodes, section_ids = load_embeddings(
+            dataset, config.gene_key, config.image_key
+        )
+        gene_source = config.gene_key
+    else:
+        gene_np, image_np, barcodes, section_ids = load_external_gene_embeddings(
+            dataset, config.gene_npz_path, config.gene_array_key, config.image_key
+        )
+        gene_source = f"{config.gene_npz_path}:{config.gene_array_key}"
+    coordinates = load_spatial_coordinates(dataset)
     logger.info(
         "Loaded %d spots | gene_key=%s (dim=%d) | image_key=%s (dim=%d)",
-        gene_np.shape[0], config.gene_key, gene_np.shape[1], config.image_key, image_np.shape[1],
+        gene_np.shape[0], gene_source, gene_np.shape[1], config.image_key, image_np.shape[1],
     )
 
     train_idx, val_idx, test_idx = three_way_split(
@@ -353,6 +591,44 @@ def main() -> None:
         len(train_idx), len(val_idx), len(test_idx), config.test_unit,
     )
 
+    split = np.full(len(section_ids), "train", dtype=object)
+    split[val_idx] = "val"
+    split[test_idx] = "test"
+    graphs: dict[str, SplitNeighborhoodGraph] = {}
+    if config.objective == "positive_neighborhood":
+        pruning_config = NeighborhoodPruningConfig(
+            coordinate_neighbors=config.coordinate_neighbors,
+            retained_neighbors=config.retained_neighbors,
+            min_gene_cosine=config.min_gene_cosine,
+            min_image_cosine=config.min_image_cosine,
+        )
+        for split_name in ("train", "val", "test"):
+            if np.any(split == split_name):
+                graphs[split_name] = build_split_neighborhood_graph(
+                    coordinates,
+                    section_ids,
+                    split,
+                    split_name,
+                    gene_np,
+                    image_np,
+                    pruning_config,
+                )
+                logger.info("%s graph: %s", split_name, graphs[split_name].diagnostics)
+
+        graph_dir = config.output_dir / "graphs" / config.run_name
+        graph_dir.mkdir(parents=True, exist_ok=True)
+        with (graph_dir / "diagnostics.json").open("w") as file:
+            json.dump(
+                {name: graph.diagnostics for name, graph in graphs.items()},
+                file,
+                indent=2,
+            )
+        np.savez_compressed(
+            graph_dir / "edges.npz",
+            **{f"{name}_candidate_edges": graph.candidate_edges for name, graph in graphs.items()},
+            **{f"{name}_retained_edges": graph.edges for name, graph in graphs.items()},
+        )
+
     gene_emb = torch.as_tensor(gene_np, dtype=torch.float32, device=device)
     image_emb = torch.as_tensor(image_np, dtype=torch.float32, device=device)
 
@@ -363,7 +639,6 @@ def main() -> None:
     model = CrossModalModel(model_config).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 
-    checkpoint_dir = config.output_dir / "checkpoints" / config.run_name
     metrics_path = config.output_dir / "metrics" / f"{config.run_name}_metrics.csv"
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -372,11 +647,20 @@ def main() -> None:
 
     with metrics_path.open("w", newline="") as file:
         writer = csv.writer(file)
-        metric_names = [
-            "loss", "clip_loss", "attraction_loss", "weighted_attraction_loss",
-            "paired_cosine", "hardest_negative_cosine", "positive_hardest_margin",
-            "temperature", "retrieval_accuracy",
-        ]
+        if config.objective == "positive_neighborhood":
+            metric_names = [
+                "loss", "self_alignment_loss", "neighbor_alignment_loss",
+                "gene_variance_loss", "image_variance_loss",
+                "gene_covariance_loss", "image_covariance_loss",
+                "self_positive_cosine", "neighbor_positive_cosine",
+                "gene_std_mean", "image_std_mean",
+            ]
+        else:
+            metric_names = [
+                "loss", "clip_loss", "attraction_loss", "weighted_attraction_loss",
+                "paired_cosine", "hardest_negative_cosine", "positive_hardest_margin",
+                "temperature", "retrieval_accuracy",
+            ]
         writer.writerow(
             ["epoch"]
             + [f"train_{name}" for name in metric_names]
@@ -384,21 +668,40 @@ def main() -> None:
         )
 
         for epoch in range(1, config.num_epochs + 1):
-            train_metrics = run_epoch(
-                model, gene_emb, image_emb, train_idx, config.batch_size, rng, train=True,
-                optimizer=optimizer, log_every=config.log_every, epoch=epoch, num_epochs=config.num_epochs,
-                same_spot_gradient_ratio=config.same_spot_gradient_ratio,
-            )
-            val_metrics = run_epoch(
-                model, gene_emb, image_emb, val_idx, config.batch_size, rng, train=False,
-                same_spot_gradient_ratio=config.same_spot_gradient_ratio,
-            )
+            if config.objective == "positive_neighborhood":
+                train_metrics = run_positive_neighborhood_epoch(
+                    model, gene_emb, image_emb, train_idx, graphs["train"],
+                    config.batch_size, rng, train=True, optimizer=optimizer,
+                    alignment_weight=config.alignment_weight,
+                    neighbor_weight=config.neighbor_weight,
+                    variance_weight=config.variance_weight,
+                    variance_gamma=config.variance_gamma,
+                    covariance_weight=config.covariance_weight,
+                )
+                val_metrics = run_positive_neighborhood_epoch(
+                    model, gene_emb, image_emb, val_idx, graphs["val"],
+                    config.batch_size, rng, train=False,
+                    alignment_weight=config.alignment_weight,
+                    neighbor_weight=config.neighbor_weight,
+                    variance_weight=config.variance_weight,
+                    variance_gamma=config.variance_gamma,
+                    covariance_weight=config.covariance_weight,
+                )
+            else:
+                train_metrics = run_epoch(
+                    model, gene_emb, image_emb, train_idx, config.batch_size, rng, train=True,
+                    optimizer=optimizer, log_every=config.log_every, epoch=epoch, num_epochs=config.num_epochs,
+                    same_spot_gradient_ratio=config.same_spot_gradient_ratio,
+                )
+                val_metrics = run_epoch(
+                    model, gene_emb, image_emb, val_idx, config.batch_size, rng, train=False,
+                    same_spot_gradient_ratio=config.same_spot_gradient_ratio,
+                )
 
             logger.info(
-                "epoch %d/%d | train loss %.4f acc %.4f | val loss %.4f acc %.4f",
+                "epoch %d/%d | train loss %.4f | val loss %.4f",
                 epoch, config.num_epochs,
-                train_metrics["loss"], train_metrics["retrieval_accuracy"],
-                val_metrics["loss"], val_metrics["retrieval_accuracy"],
+                train_metrics["loss"], val_metrics["loss"],
             )
             writer.writerow(
                 [epoch]
@@ -424,13 +727,8 @@ def main() -> None:
     best_checkpoint = torch.load(checkpoint_dir / "best.pt", map_location=device, weights_only=False)
     model.load_state_dict(best_checkpoint["model"])
 
-    split = np.full(len(section_ids), "train", dtype=object)
-    split[val_idx] = "val"
-    split[test_idx] = "test"
-
     gene_projected, image_projected = export_embeddings(model, gene_emb, image_emb)
 
-    predictions_path = config.output_dir / "predictions" / f"{config.run_name}_embeddings.npz"
     predictions_path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         predictions_path,
@@ -440,6 +738,9 @@ def main() -> None:
         section_ids=section_ids,
         split=split,
         image_key=config.image_key,
+        objective=config.objective,
+        gene_source=gene_source,
+        gene_array_key=config.gene_array_key,
     )
 
     logger.info("Training complete. Best val loss: %.4f", best_val_loss)
@@ -447,6 +748,12 @@ def main() -> None:
         "Exported gene_projected %s, image_projected %s to %s",
         gene_projected.shape, image_projected.shape, predictions_path,
     )
+    return predictions_path
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    train_cross_modal(TrainConfig(**vars(build_arg_parser().parse_args())))
 
 
 if __name__ == "__main__":

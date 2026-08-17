@@ -63,7 +63,7 @@ class TrainConfig:
     output_dir: Path = Path("outputs/gene_encoder")
     run_name: str = "gene_byol"
 
-    hidden_dim: int = 512
+    hidden_dims: Tuple[int, ...] = (1024, 512, 256)
     embedding_dim: int = 128
     projection_dim: int = 128
     projection_hidden_dim: int = 256
@@ -266,6 +266,20 @@ def export_embeddings(
     return np.concatenate(outputs, axis=0)
 
 
+@torch.no_grad()
+def export_multistage_embeddings(
+    encoder: GeneEncoder, expression: torch.Tensor, batch_size: int = 4096
+) -> Dict[str, np.ndarray]:
+    """Export every encoder stage using one deterministic unaugmented forward pass."""
+    encoder.eval()
+    output_blocks: Dict[str, List[np.ndarray]] = {}
+    for start in range(0, expression.shape[0], batch_size):
+        features = encoder.forward_features(expression[start : start + batch_size])
+        for key, value in features.items():
+            output_blocks.setdefault(key, []).append(value.cpu().numpy().astype(np.float32))
+    return {key: np.concatenate(blocks, axis=0) for key, blocks in output_blocks.items()}
+
+
 def save_checkpoint(
     learner, config: TrainConfig, epoch: int, metrics: Dict[str, float], path: Path
 ) -> None:
@@ -292,7 +306,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-dir", type=Path, default=defaults.output_dir)
     parser.add_argument("--run-name", type=str, default=defaults.run_name)
 
-    parser.add_argument("--hidden-dim", type=int, default=defaults.hidden_dim)
+    parser.add_argument("--hidden-dims", type=int, nargs="+", default=list(defaults.hidden_dims))
     parser.add_argument("--embedding-dim", type=int, default=defaults.embedding_dim)
     parser.add_argument("--projection-dim", type=int, default=defaults.projection_dim)
     parser.add_argument("--projection-hidden-dim", type=int, default=defaults.projection_hidden_dim)
@@ -336,7 +350,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    config = TrainConfig(**vars(build_arg_parser().parse_args()))
+    parsed = vars(build_arg_parser().parse_args())
+    parsed["hidden_dims"] = tuple(parsed["hidden_dims"])
+    config = TrainConfig(**parsed)
 
     torch.manual_seed(config.seed)
     np.random.seed(config.seed)
@@ -380,7 +396,7 @@ def main() -> None:
 
     encoder_config = GeneEncoderConfig(
         input_dim=expression_np.shape[1],
-        hidden_dim=config.hidden_dim,
+        hidden_dims=config.hidden_dims,
         embedding_dim=config.embedding_dim,
         projection_dim=config.projection_dim,
         projection_hidden_dim=config.projection_hidden_dim,
@@ -460,16 +476,28 @@ def main() -> None:
     split[val_idx] = "val"
     split[test_idx] = "test"
 
-    embeddings = export_embeddings(encoder, expression)
+    exported = export_multistage_embeddings(encoder, expression)
+    embeddings = exported["embedding"]
+    if len(set(config.hidden_dims)) != len(config.hidden_dims):
+        raise ValueError("hidden_dims must be unique for dimension-keyed artifact export")
+    stage_arrays = {
+        f"gene_stage_{width}": exported[f"encoder_stage_{index}"]
+        for index, width in enumerate(config.hidden_dims, start=1)
+    }
 
     predictions_path = config.output_dir / "predictions" / f"{config.run_name}_embeddings.npz"
     predictions_path.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         predictions_path,
         embeddings=embeddings,
+        gene_embedding_128=embeddings,
+        **stage_arrays,
         barcodes=barcodes,
         section_ids=section_ids,
         split=split,
+        schema_version=np.asarray(2, dtype=np.int64),
+        hidden_dims=np.asarray(config.hidden_dims, dtype=np.int64),
+        embedding_dim=np.asarray(config.embedding_dim, dtype=np.int64),
     )
 
     logger.info("Training complete. Best val loss: %.4f", best_val_loss)

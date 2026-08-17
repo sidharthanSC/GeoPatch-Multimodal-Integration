@@ -2,7 +2,7 @@
 
 - **Research code must be reusable: expose every model, dataset, representation, and evaluation as an importable, parameterized Python API; keep CLI modules as thin wrappers around those APIs so future studies in this repository can compose them.**
 - Read `PROGRESS.md` first for the live pipeline/status, then `CLAUDE.md` for repository history and data layout. Treat `outputs/README.md` as the canonical index of `src/train/` runs and results.
-- Treat `MODEL_BENCHMARK_REPORT.md` as the fixed evaluation protocol, `EXECUTION_CHECKPOINTS.md` as the resumable phase/run ledger, and `MULTIMODAL_EVALUATION_RESULTS.md` as the generated-results report. Update the execution ledger after every verified phase and record every saved model or embedding in `outputs/README.md`.
+- Treat `MODEL_BENCHMARK_REPORT.md` as the fixed evaluation protocol, `EXECUTION_CHECKPOINTS.md` as the resumable phase/run ledger, and `observations/MULTIMODAL_EVALUATION_RESULTS.md` as the generated-results report. Update the execution ledger after every verified phase and record every saved model or embedding in `outputs/README.md`.
 - Preserve provenance for every experiment: explicit seed, input embedding keys, split definition, configuration, checkpoint, metrics, and named output directory. Do not silently overwrite a prior run.
 
 ## Central Research Architecture

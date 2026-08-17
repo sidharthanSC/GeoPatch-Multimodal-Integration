@@ -22,7 +22,7 @@ pytest
 
 - `MODEL_BENCHMARK_REPORT.md` defines the fixed evaluation and literature-comparison protocol.
 - `EXECUTION_CHECKPOINTS.md` tracks resumable GBSSA training/evaluation phases and artifact paths.
-- `MULTIMODAL_EVALUATION_RESULTS.md` contains generated repository results as phases complete.
+- `observations/MULTIMODAL_EVALUATION_RESULTS.md` contains generated repository results as phases complete.
 - `outputs/README.md` is the run and artifact index.
 
 ## Layout

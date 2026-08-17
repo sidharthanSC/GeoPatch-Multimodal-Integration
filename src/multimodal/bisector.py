@@ -36,6 +36,34 @@ def bisector_embedding(image_emb: np.ndarray, gene_emb: np.ndarray) -> np.ndarra
     return bisector / norm
 
 
+def export_bisector_embedding(
+    checkpoint_path: Path,
+    output_path: Path,
+    gene_key: str = "gene_emb_cm_img",
+    image_key: str = "img_emb_cm",
+) -> Path:
+    """Export a named bisector feature bundle with compound spot identities."""
+    if output_path.exists():
+        raise FileExistsError(f"Refusing to overwrite {output_path}")
+    gene, image, _labels, barcodes, section_ids = load_embeddings_and_labels(
+        checkpoint_path, gene_key=gene_key, image_key=image_key
+    )
+    bisector = bisector_embedding(image, gene).astype(np.float32)
+    if not np.isfinite(bisector).all():
+        raise ValueError("Bisector contains non-finite values")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        output_path,
+        bisector=bisector,
+        barcodes=barcodes,
+        section_ids=section_ids,
+        gene_key=np.asarray(gene_key),
+        image_key=np.asarray(image_key),
+        objective=np.asarray("normalized_angular_bisector"),
+    )
+    return output_path
+
+
 def run(checkpoint_path: Path, n_clusters: int, seed: int) -> dict:
     gene_emb, image_emb, labels, barcodes, section_ids = load_embeddings_and_labels(checkpoint_path)
     bisector = bisector_embedding(image_emb, gene_emb)

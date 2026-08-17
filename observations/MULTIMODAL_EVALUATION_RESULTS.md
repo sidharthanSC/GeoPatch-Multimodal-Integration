@@ -2,7 +2,19 @@
 
 ## Status
 
-No new GBSSA training has completed yet. The read-only checkpoint audit and legacy-result reproduction are complete. This file is the generated-results ledger; the fixed protocol and literature context remain in `MODEL_BENCHMARK_REPORT.md`, and execution state remains in `EXECUTION_CHECKPOINTS.md`.
+The seed-0 spatial multimodal contrastive study and repository-local STAIG adaptation are complete. The STAIG adaptation is the strongest repository domain-discovery result but remains below published STAIG. This file is the generated-results ledger; exact prior-model protocols are in `PRIOR_MODEL_PROTOCOLS.md`.
+
+## Prior-Model Reproduction
+
+Canonical run: `outputs/prior_models/staig_paper_default_img_emb_seed0_all12_v3/`.
+
+| Result | Mean ARI | Median ARI | Mean NMI | Median NMI |
+|---|---:|---:|---:|---:|
+| STAIG adaptation, refined | 0.50693 | 0.51821 | 0.64353 | 0.67427 |
+| Published STAIG figure values | 0.69167 | 0.68000 | 0.71167 | 0.71500 |
+| Published SpaGCN rows in STAIG | 0.43833 | 0.43500 | 0.59250 | 0.60500 |
+
+The adaptation trains the official one-layer graph-contrastive architecture independently on every section for 400 epochs, with coordinate `k=5`, temperature 10, 10% feature masks, 40 image pseudo-clusters, tied-covariance GMM, and 15-neighbor refinement. It uses fixed repository `img_emb` because STAIG's raw patch and filtered-image BYOL inputs are unavailable. Complete comparisons are in `outputs/evaluation/20260815_staig_adaptation_vs_published_v1/`.
 
 Never copy published reference values into a “repository run” column. Every repository result must link to an immutable artifact under `outputs/evaluation/<run_id>/` and include its representation seed, evaluator seed, split, embedding keys, clustering/probe configuration, and refinement policy.
 
@@ -53,6 +65,59 @@ Transition-ratio follow-up found that ratio `1.1` still learned weak corresponde
 
 ## Cross-Modal Alignment
 
+### Unified Spatial Multimodal Contrastive Candidate
+
+Canonical run: `spatial_multimodal_contrastive_img_k6r5_seed0`.
+
+The model uses the same pruned coordinate graph for four multi-positive InfoNCE terms:
+
+- Gene-to-gene retained spatial-neighbor positives.
+- Image-to-image retained spatial-neighbor positives.
+- Gene-to-image exact-spot plus retained-neighbor positives.
+- Image-to-gene exact-spot plus retained-neighbor positives.
+
+Unretained coordinate candidates are excluded from the negative set rather than treated as certain negatives. Negatives are restricted to non-neighbor spots in the same section. The model was trained transductively for 30 fixed epochs with seed 0; no labels or label-based checkpoint selection were used. Total loss decreased from `6.9572` to `5.9384`.
+
+Important scope: the repository lacks raw image patches and image-BYOL training code. Therefore this run trains image and gene projection heads over fixed `img_emb` and `gene_emb`; it does not retrain the external image BYOL encoder or the raw-expression gene BYOL encoder.
+
+Complete-gallery median diagnostics: R@1 `0.00112`, R@10 `0.00912`, median rank `984.5`, FOSCTTM `0.31845`, cosine gap `0.02454`, and projected gene/image effective rank `3.31/43.20`. Exact retrieval improves over graph-pooled Procrustes, but the gene head remains low-rank and requires future diagnosis.
+
+Artifacts:
+
+- `outputs/cross_modal/checkpoints/spatial_multimodal_contrastive_img_k6r5_seed0/last.pt`
+- `outputs/cross_modal/metrics/spatial_multimodal_contrastive_img_k6r5_seed0_metrics.csv`
+- `outputs/cross_modal/graphs/spatial_multimodal_contrastive_img_k6r5_seed0/`
+- `outputs/cross_modal/predictions/spatial_multimodal_contrastive_img_k6r5_seed0_embeddings.npz`
+- `outputs/evaluation/20260814_spatial_multimodal_contrastive_seed0_v1/`
+
+### Graph-Positive Study Summary
+
+The requested removal of different-spot InfoNCE repulsion was tested in three stages. Prior artifacts were retained for provenance rather than overwritten.
+
+| Candidate | Main outcome | Median bisector ARI | Decision |
+|---|---|---:|---|
+| Raw-output positive-neighborhood MLP | Angular contraction; gene effective rank `3.42` | `0.16108` | Rejected |
+| Angular-VICReg MLP, alignment weight 1 | Non-collapsed but did not align; paired cosine near zero | `0.09597` | Rejected |
+| Angular-VICReg MLP, alignment weight 25 | Alignment-induced rank collapse to approximately 2 | `0.11016` | Rejected |
+| Graph-positive orthogonal Procrustes | Preserved source geometry; alignment alone did not improve domains | `0.14360` | Control |
+| **Graph pooling + orthogonal Procrustes** | First positive domain result; strongest with concatenation | `0.16101` | **Retained candidate** |
+
+Canonical candidate: `graph_pooled_procrustes_img_k6r5_seed0`.
+
+- Coordinate candidates: within-section Euclidean `k=6` graph.
+- Edge pruning: each endpoint ranks coordinate candidates independently in frozen gene and image spaces; only the intersection of both top-5 lists is nominated, and edges require mutual nomination.
+- Full graph: 144,857 coordinate candidates, 72,089 retained edges (`49.77%`), mean degree `3.05`, isolated fraction `3.16%`.
+- Each modality is pooled as normalized self plus the retained-neighbor mean.
+- Two orthogonal maps are fitted from same-spot and retained-neighbor cross-modal positives. No different-spot negative is constructed.
+- This is a per-section transductive representation. It is not donor-holdout evidence.
+
+Artifacts:
+
+- `outputs/cross_modal/checkpoints/graph_pooled_procrustes_img_k6r5_seed0/`
+- `outputs/cross_modal/graphs/graph_pooled_procrustes_img_k6r5_seed0/`
+- `outputs/cross_modal/predictions/graph_pooled_procrustes_img_k6r5_seed0_embeddings.npz`
+- `outputs/evaluation/20260814_graph_pooled_procrustes_img_k6r5_seed0_weighted_v1/`
+
 ### Per-Section Complete-Gallery Diagnostics
 
 Medians across 12 sections; all evaluated spots participated in representation training or checkpoint selection, so these are transductive diagnostics rather than held-out generalization.
@@ -67,7 +132,60 @@ Artifact: `outputs/evaluation/20260814_alignment_diagnostics_v1/`.
 
 Interpretation: positive-heavy GBSSA contracts the representation. Ratio 1.1 already approaches low-rank geometry with nearly universal high cosine, and ratio 5 produces practically constant vectors. This explains both chance retrieval and degraded clustering.
 
+Graph-pooled Procrustes complete-gallery diagnostic, median across sections: R@1 `0.00029`, R@10 `0.00345`, median rank `1726.25`, FOSCTTM `0.45360`, cosine gap `0.06406`, and effective rank `1.49/8.80` for pooled gene/image outputs. Orthogonal fitting itself preserves the geometry of its pooled inputs; the low ranks primarily expose the anisotropy of those source/pooling representations. Exact-pair retrieval remains weak and is not the objective used to select the candidate.
+
 ## Per-Section Domain Discovery
+
+### Unified Spatial Multimodal Contrastive, One Seed
+
+One model seed and one KMeans seed were used, as predeclared to control compute. The 12 sections remain the biological evaluation units; this does not replace representation-seed replication for a final publication claim.
+
+| Representation | Median ARI | Median NMI | Median Hungarian accuracy | Refined ARI | Refined NMI |
+|---|---:|---:|---:|---:|---:|
+| Raw image | 0.16213 | 0.23528 | 0.38098 | 0.17739 | 0.25328 |
+| New gene | 0.11540 | 0.16864 | 0.31255 | 0.14990 | 0.20067 |
+| Unaligned bisector | 0.16520 | 0.23633 | 0.41191 | 0.19705 | 0.28454 |
+| Spatial-contrastive gene | 0.10027 | 0.17361 | 0.31078 | 0.12056 | 0.20134 |
+| Spatial-contrastive image | 0.17789 | 0.26321 | 0.38505 | 0.19437 | 0.28787 |
+| **Spatial-contrastive bisector** | **0.19783** | **0.29149** | 0.40994 | 0.21504 | **0.32875** |
+| Spatial-contrastive concat | 0.20260 | 0.27719 | 0.41363 | 0.22215 | 0.31174 |
+| **Spatial-contrastive concat PCA-128** | **0.20622** | 0.28176 | **0.42575** | **0.22356** | 0.31973 |
+
+This was the strongest GeoPatch domain-discovery result before the direct STAIG adaptation. It supports the spatial-positive objective, but not the claim of perfect unsupervised layer alignment. Refined ARI remains about `0.22`, far below STAIG's displayed mean `0.692`.
+
+GMM seed-0 sensitivity: bisector ARI/NMI `0.19627/0.27765`, refined to `0.21330/0.31494`. KMeans and GMM give consistent conclusions.
+
+Artifacts:
+
+- `outputs/evaluation/20260814_spatial_multimodal_contrastive_seed0_v1/clustering/`
+- `outputs/evaluation/20260814_spatial_multimodal_contrastive_seed0_v1/spatial_refinement/`
+- `outputs/evaluation/20260814_spatial_multimodal_contrastive_gmm_seed0_v1/`
+
+### Graph-Pooled Orthogonal Candidate, Seed 0
+
+Ten KMeans seeds per section, known observed annotation count used only as `k`, no labels in representation fitting or assignments.
+
+| Representation | Median ARI | Median NMI | Median Hungarian accuracy | Refined ARI | Refined NMI |
+|---|---:|---:|---:|---:|---:|
+| Raw image | 0.15245 | 0.22667 | 0.39233 | 0.16312 | 0.24103 |
+| New gene | 0.11656 | 0.16780 | 0.31229 | 0.15144 | 0.20102 |
+| Unaligned bisector | 0.16323 | 0.23697 | 0.40558 | 0.19937 | 0.28514 |
+| Graph-pooled aligned gene | 0.13874 | 0.20350 | 0.33005 | 0.16815 | 0.22880 |
+| Graph-pooled aligned image | 0.15933 | 0.23292 | 0.39955 | 0.16666 | 0.24280 |
+| Graph-pooled aligned bisector | 0.16101 | 0.24002 | 0.40066 | 0.17971 | 0.27266 |
+| **Graph-pooled aligned concat** | 0.17707 | 0.25652 | 0.40578 | 0.20904 | **0.29378** |
+| **Aligned concat PCA-128** | 0.17717 | 0.25567 | 0.40687 | **0.21001** | 0.29319 |
+| Aligned weighted mean, 25% gene | **0.18455** | **0.25694** | **0.42022** | 0.19180 | 0.26995 |
+
+The complete aligned fixed-weight curve was reported. The 25% gene/75% image row is the best unrefined sensitivity result but was not selected by a train-only or label-free criterion. After common strict-majority 6-NN refinement, concatenation is strongest. The central equal-bisector hypothesis is therefore not the best current model.
+
+GMM sensitivity (PCA-30, sklearn full covariance, seed 0): aligned bisector ARI/NMI `0.16663/0.25918`, rising to `0.18788/0.28917` after common refinement. One initialization emitted a convergence warning, so this remains sensitivity evidence rather than the primary result.
+
+Artifacts:
+
+- `outputs/evaluation/20260814_graph_pooled_procrustes_img_k6r5_seed0_weighted_v1/clustering/`
+- `outputs/evaluation/20260814_graph_pooled_procrustes_img_k6r5_seed0_weighted_v1/spatial_refinement/`
+- `outputs/evaluation/20260814_graph_pooled_procrustes_img_k6r5_seed0_gmm_v1/`
 
 ### Existing Embeddings: KMeans, No Refinement
 
@@ -88,7 +206,7 @@ Ten explicit KMeans seeds per section. Each section uses its exact observed anno
 
 Artifact: `outputs/evaluation/20260813_existing_embeddings_kmeans_10seeds_v1/clustering/`.
 
-Interpretation: the current aligned bisector does not outperform raw `img_emb` or aligned image alone on median ARI. It remains far below STAIG's published per-section median ARI `0.69`, though backend/refinement and method-training protocols are not yet harmonized. This motivates GBSSA retraining rather than supporting the current alignment.
+Interpretation: the current aligned bisector does not outperform raw `img_emb` or aligned image alone on median ARI. It remains far below STAIG's displayed mean ARI `0.692`, though backend/refinement and method-training protocols are not harmonized. This motivates GBSSA retraining rather than supporting the current alignment.
 
 GMM/mclust-compatible, Leiden, and refined tables remain pending.
 
@@ -158,6 +276,34 @@ Pending Phase 7.
 
 ## Frozen Representation Probes
 
+### Unified Spatial Multimodal Contrastive Probe
+
+| Representation | Accuracy | Balanced accuracy | Macro-F1 |
+|---|---:|---:|---:|
+| Spatial-contrastive gene | 0.45348 | 0.29560 | 0.26294 |
+| Spatial-contrastive image | 0.48419 | 0.34726 | 0.34315 |
+| Spatial-contrastive bisector | 0.51870 | 0.38989 | 0.38259 |
+| **Spatial-contrastive concatenation** | **0.52750** | **0.40424** | **0.40236** |
+
+Artifact: `outputs/evaluation/20260814_spatial_multimodal_contrastive_probe_seed0_v1/`.
+
+The solver reached its iteration limit for some rows, so these are one-seed gates. The graph-pooled Procrustes concatenation remains stronger on this supervised probe (`0.55687` accuracy), while the new objective is stronger for unsupervised domain clustering.
+
+### Graph-Pooled Orthogonal Candidate, Random-Spot Gate
+
+| Representation | Accuracy | Balanced accuracy | Macro-F1 |
+|---|---:|---:|---:|
+| Unaligned bisector | 0.46546 | 0.32509 | 0.31524 |
+| Unaligned concatenation | 0.48813 | 0.35854 | 0.35184 |
+| Graph-pooled aligned gene | 0.51285 | 0.37891 | 0.36298 |
+| Graph-pooled aligned image | 0.40785 | 0.24947 | 0.25332 |
+| Graph-pooled aligned bisector | 0.49053 | 0.35934 | 0.35473 |
+| **Graph-pooled aligned concatenation** | **0.55687** | **0.44982** | **0.45296** |
+
+Artifact: `outputs/evaluation/20260814_graph_pooled_procrustes_img_k6r5_seed0_probe_v1/`.
+
+This is a one-seed random-spot transductive probe, not section/donor generalization. Concatenation improves over the prior standard-CLIP aligned-concatenation gate (`0.5331/0.4167/0.4151`).
+
 ### Random-Spot Transductive Logistic Probe Gate, Seed 0
 
 | Representation | Accuracy | Balanced accuracy | Macro-F1 |
@@ -196,6 +342,38 @@ Artifacts:
 Conclusion: the parameter-matched MLP confirms a benefit from token interaction, but the full cross-attention architecture does not beat self-attention alone. Because each cross block has only one key/value token, its softmax is always one; the experiments show no benefit from those blocks. The supported supervised architecture is therefore **two-token self-attention fusion**, not the original length-one cross-attention claim.
 
 ## Joint-Section Integration
+
+### Unified Spatial Multimodal Contrastive Integration
+
+| Subset | Representation | ARI | NMI | Section iLISI | Section BatchKL |
+|---|---|---:|---:|---:|---:|
+| 151675 + 151676 | Spatial-contrastive bisector | 0.11278 | 0.18147 | 1.2957 | 0.4022 |
+| 151675 + 151676 | Spatial-contrastive concat | 0.10902 | 0.17914 | 1.2936 | 0.4030 |
+| Four sections, two donors | **Spatial-contrastive bisector** | **0.16418** | **0.23457** | 1.5258 | 0.9154 |
+| Four sections, two donors | Spatial-contrastive concat | 0.15624 | 0.21596 | 1.5143 | 0.9227 |
+
+Artifacts:
+
+- `outputs/evaluation/20260814_spatial_multimodal_contrastive_integration_151675_151676_v1/`
+- `outputs/evaluation/20260814_spatial_multimodal_contrastive_integration_4sections_v1/`
+
+The four-section bisector slightly improves biological conservation over the graph-pooled candidate while also improving local mixing, but it remains far below STAIG's native integration ARI/NMI. Mixing metrics remain repository-local surrogates.
+
+### Graph-Pooled Orthogonal Candidate
+
+| Subset | Representation | ARI | NMI | Section iLISI | Section BatchKL |
+|---|---|---:|---:|---:|---:|
+| 151675 + 151676 | Aligned bisector | 0.10009 | 0.17071 | 1.2188 | 0.4867 |
+| 151675 + 151676 | **Aligned concat** | **0.11635** | **0.17697** | 1.1786 | 0.5236 |
+| Four sections, two donors | Aligned bisector | 0.15776 | 0.22573 | 1.3719 | 1.0545 |
+| Four sections, two donors | **Aligned concat** | **0.16758** | **0.22633** | 1.3052 | 1.1049 |
+
+Artifacts:
+
+- `outputs/evaluation/20260814_graph_pooled_procrustes_integration_151675_151676_v1/`
+- `outputs/evaluation/20260814_graph_pooled_procrustes_integration_4sections_v1/`
+
+Biological ARI improves over the earlier repository candidates on the four-section subset, but mixing is poor. The gene-only representation still gives much higher section mixing. These repository-local mixing metrics are not numerically equivalent to STAIG's implementation.
 
 ### Adjacent Same-Donor Sections 151675 And 151676
 
@@ -248,6 +426,10 @@ Pending Phase 10. Keep post-hoc transfer on transductive embeddings separate fro
 Pending Phase 11. Missing methods must be marked `NOT RUN` with a reason.
 
 ## Negative And Failed Experiments
+
+### Multi-Scale Gene STAIG Ablation
+
+The superseding study is in `observations/MULTISCALE_GENE_STAIG_BENCHMARK.md`. The all-gene reconstruction-preserving encoder reaches median refined STAIG ARI/NMI `0.52293/0.66682` at stage 4,096, versus expression STAIG `0.51821/0.67427`. Final gene-128 reaches `0.44533/0.59228`; aligned final-128 reaches `0.49365/0.66117`. Direct aligned concatenation reaches `0.45084/0.59663`, while the bisector reaches `0.40034/0.58032`. The earlier 3,000-HVG S0-S6 study is superseded historical evidence of information loss.
 
 - Ratios `2`, `5`, and `10`: geometric/alignment collapse; artifacts retained under `outputs/cross_modal/` and ratio-specific evaluation directories.
 - Transition ratios `1.1`, `1.25`, `1.5`: no clustering improvement; ratios 1.1 and above showed contraction, with 1.5 at chance retrieval.

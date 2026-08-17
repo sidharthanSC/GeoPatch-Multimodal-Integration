@@ -68,4 +68,7 @@ def existing_embedding_representations(
         representations[f"R13_unaligned_weighted_gene_{label}"] = weighted_normalized_mean(
             gene, image, gene_weight
         )
+        representations[f"R13_aligned_weighted_gene_{label}"] = weighted_normalized_mean(
+            aligned_gene, aligned_image, gene_weight
+        )
     return representations

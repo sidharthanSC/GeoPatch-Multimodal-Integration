@@ -19,6 +19,8 @@ All 128-d, per spot, present in every section's `obsm`:
 
 ## 1. Gene-expression BYOL encoder -- `src/gene_encoder/`
 
+**Superseding rich encoder (2026-08-15):** `src/gene_encoder/rich_train.py` trains from all 33,538 common genes using sparse CPU-backed batches, two independent masked views, masked weighted-Huber reconstruction, stage-wise variance/covariance, expression-SVD geometry preservation, a fixed SVD residual, and weak spatial consistency. Canonical run `rich_gene_v2_all33538_seed0` uses `33538 -> 4096 -> 1024 -> 512 -> 128`, selected epoch 27, and exports all four stages for 47,329 spots. Stage-4096 STAIG median refined ARI is `0.52293`, final-128 is `0.44533`, and reconstruction-regularized aligned-128 is `0.49365`. This supersedes the 3,000-HVG multi-stage negative result; details are in `RICH_GENE_EXPRESSION_EXECUTION.md` and `observations/MULTISCALE_GENE_STAIG_BENCHMARK.md`.
+
 **Goal**: produce `gene_emb`, a 128-d self-supervised embedding of each spot's gene
 expression, analogous to the pre-existing frozen `img_emb`.
 

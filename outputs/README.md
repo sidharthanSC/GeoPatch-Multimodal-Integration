@@ -2,7 +2,7 @@
 
 The fixed benchmark protocol is `MODEL_BENCHMARK_REPORT.md`, resumable execution state is
 `EXECUTION_CHECKPOINTS.md`, and generated result tables are maintained in
-`MULTIMODAL_EVALUATION_RESULTS.md`. New GBSSA and evaluation runs must be added here when
+`observations/MULTIMODAL_EVALUATION_RESULTS.md`. New GBSSA and evaluation runs must be added here when
 their artifacts are verified; a planned run is not a completed artifact.
 
 ## Evaluation artifacts
@@ -26,6 +26,60 @@ their artifacts are verified; a planned run is not a completed artifact.
 | `20260814_integration_151675_151676_v1` | verified common integration | `outputs/evaluation/20260814_integration_151675_151676_v1/` | aligned bisector best ARI 0.1120; aligned gene best local mixing |
 | `20260814_integration_151507_151508_151675_151676_v1` | verified common integration | `outputs/evaluation/20260814_integration_151507_151508_151675_151676_v1/` | unaligned concatenation best ARI 0.1509; aligned gene best local mixing |
 | `20260814_weighted_bisector_seed0_kmeans_10seeds_v1` | verified sensitivity | `outputs/evaluation/20260814_weighted_bisector_seed0_kmeans_10seeds_v1/clustering/` | full fixed-weight curve; gene/image 0.25/0.75 median ARI 0.16564 |
+| `20260814_graph_pooled_procrustes_img_k6r5_seed0_weighted_v1` | verified candidate | `clustering/`, `spatial_refinement/` | aligned concat ARI/NMI 0.17707/0.25652; refined 0.20904/0.29378; aligned 25% gene weighted mean unrefined ARI 0.18455 |
+| `20260814_graph_pooled_procrustes_img_k6r5_seed0_gmm_v1` | verified sensitivity | `clustering/`, `spatial_refinement/` | aligned bisector GMM ARI/NMI 0.16663/0.25918; refined 0.18788/0.28917 |
+| `20260814_graph_pooled_procrustes_img_k6r5_seed0_probe_v1` | verified gate | `metrics.parquet`, `predictions.parquet`, `summary.json` | aligned concat accuracy/balanced accuracy/macro-F1 0.55687/0.44982/0.45296 |
+| `20260814_graph_pooled_procrustes_integration_151675_151676_v1` | verified integration | `metrics.parquet`, `summary.json` | aligned concat ARI/NMI 0.11635/0.17697 |
+| `20260814_graph_pooled_procrustes_integration_4sections_v1` | verified integration | `metrics.parquet`, `summary.json` | aligned concat ARI/NMI 0.16758/0.22633; mixing remains weak |
+| `20260814_spatial_multimodal_contrastive_seed0_v1` | verified candidate | `alignment/`, `clustering/`, `spatial_refinement/` | one-seed bisector ARI/NMI 0.19783/0.29149, refined 0.21504/0.32875; concat PCA refined ARI 0.22356 |
+| `20260814_spatial_multimodal_contrastive_gmm_seed0_v1` | verified sensitivity | `clustering/`, `spatial_refinement/` | bisector GMM ARI/NMI 0.19627/0.27765, refined 0.21330/0.31494 |
+| `20260814_spatial_multimodal_contrastive_probe_seed0_v1` | verified gate | `metrics.parquet`, `predictions.parquet`, `summary.json` | concat accuracy/balanced accuracy/macro-F1 0.52750/0.40424/0.40236 |
+| `20260814_spatial_multimodal_contrastive_integration_151675_151676_v1` | verified integration | `metrics.parquet`, `summary.json` | bisector ARI/NMI 0.11278/0.18147 |
+| `20260814_spatial_multimodal_contrastive_integration_4sections_v1` | verified integration | `metrics.parquet`, `summary.json` | bisector ARI/NMI 0.16418/0.23457; improved local mixing over graph-pooled candidate |
+| `20260815_staig_adaptation_vs_published_v1` | verified comparison | `section_comparison.csv`, `summary.json` | adapted STAIG mean/median refined ARI 0.50693/0.51821 versus published STAIG 0.69167/0.68000 and published SpaGCN 0.43833/0.43500 |
+| `20260815_multistage_gene128_gbssa_r01_v2_alignment` | verified diagnostic | parquet plus `summary.json` | median cosine gap 0.05355, FOSCTTM 0.30975, gene/image effective rank 7.22/33.96 |
+| `20260815_multistage_gene128_gbssa_r011_v2_alignment` | negative diagnostic | parquet plus `summary.json` | ratio 1.1 contracted outputs: cosine gap 0.01615 and gene/image effective rank 3.34/3.85 |
+| `20260815_multiscale_gene_staig_controls_seed0_v2` | verified multiscale evaluation | `direct_clustering.parquet`, `probe_metrics.parquet`, `summary.json`, `config.json` | stage-1024 direct refined median ARI 0.20599; expression STAIG probe median balanced accuracy 0.85665 versus best multistage 0.43179 |
+| `20260815_rich_gene_all33538_direct_v1` | canonical rich-gene direct evaluation | `direct_clustering.parquet`, `preprocessing_diagnostics.parquet`, `summary.json`, `config.json` | median refined ARI: stage 4096 0.44860, stage 1024 0.42932, stage 512 0.44446, final 128 0.43236 |
+| `20260815_rich_gene_all33538_alignment_v1` | canonical rich alignment diagnostic | parquet plus `summary.json` | median R@10 0.07209, FOSCTTM 0.11712, cosine gap 0.11104, gene/image effective rank 45.22/87.00 |
+| `20260815_rich_gene_all33538_aligned_direct_v1` | canonical aligned clustering | `direct_clustering.parquet`, `summary.json`, `config.json` | median refined ARI/NMI: concat 0.45084/0.59663, bisector 0.40034/0.58032 |
+| `20260815_adjacency_clustering_seed0_v1` | verified graph-only sensitivity | `summary.json`, `section_metrics.csv`, 36 sparse adjacency matrices, 36 assignment files | median refined ARI: spatial binary 0.19285, all-gene weighted 0.19298, image weighted 0.20916; all remain below Expression STAIG 0.51821 |
+| `20260815_supervised_multiphase_study_v1` | verified conference-style supervised multimodal classification | `outputs/evaluation/20260815_supervised_study_aggregate_v1/`, `observations/SUPERVISED_MULTIPHASE_RESULTS.md` | regime‑wise balanced accuracy: LODO 0.2146 (CI 0.2036–0.2256), LOSO 0.2371 (0.2230–0.2512), within‑donor random 0.5165 (0.4680–0.5651), pooled random 0.4563 (0.4117–0.5008); primary LODO balanced‑accuracy 0.2146; does not beat raw gene; GCN strongest grouped‑transfer model at 0.309; see report for per‑method, per‑layer, spectral, and ablation tables. |
+| `20260816_mp_mnca_phase1_all12` | **verified MP-MNCA Phase 1 (3000-dim cross-attention) — BREAKTHROUGH** | `outputs/mp_mnca/phase1_all12/`, `outputs/mp_mnca/phase1_all12_remaining/` | **20 epochs, all 12 sections, mean refined ARI 0.824, median 0.896; DESTROYS STAIG (0.518 median) — 10/12 sections win, 20× faster** |
+| `20260816_mp_mnca_phase2_v1` | verified MP-MNCA Phase 2 (BYOL 3000→3000 reconstruction) | `outputs/mp_mnca/phase2_v1/` | 50 epochs, section 151507, refined ARI 0.278; reconstruction objective, weaker than contrastive |
+| `20260816_mp_mnca_contrastive_v1` | verified MP-MNCA contrastive (50 ep, 1 section) | `outputs/mp_mnca/contrastive_v1/` | 50 epochs, section 151507, refined ARI 0.228; contrastive loss works |
+| `20260816_mp_mnca_contrastive_v2` | verified MP-MNCA contrastive (100 ep, 4 sections) | `outputs/mp_mnca/contrastive_v2/` | 100 epochs, donor 1 sections, mean refined ARI 0.311; contrastive beats latent pred |
+| `20260816_mp_mnca_contrastive_v3` | verified MP-MNCA contrastive (200 ep, 12 sections) | `outputs/mp_mnca/contrastive_v3/` | 200 epochs, all 12 sections, mean refined ARI 0.272, median 0.222; beats STAIG on 2 donor-2 sections |
+| `20260816_mp_mnca_gene_cosine_v2` | verified MP-MNCA gene-cosine prior (200 ep, 12 sections) | `outputs/mp_mnca/gene_cosine_v2/` | 200 epochs, all 12 sections, mean refined ARI 0.243, median 0.222; gene_cosine similar to image_cosine |
+| `20260816_mp_mnca_byol_v1` | verified MP-MNCA BYOL encoder (50 ep, 1 section) | `outputs/mp_mnca/byol_v1/` | 50 epochs, section 151507, refined ARI 0.234; random BYOL encoder, needs pre-training |
+| `20260816_mp_mnca_report` | MP-MNCA vs STAIG comparison report | `results/mp_mnca_vs_staig.md` | Full comparison: **Phase 1 (3000-dim) destroys STAIG (0.824 vs 0.507 mean ARI), latent pred fails, 128-d variants fail** |
+
+## Prior-model runs
+
+| run | status | artifacts | result |
+|---|---|---|---|
+| `staig_paper_default_img_emb_seed0_all12_v3` | canonical adaptation | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 400-epoch models; mean/median refined ARI 0.50693/0.51821, NMI 0.64353/0.67427 |
+| `spagcn_paper_default_seed100_all12_v1` | canonical SpaGCN reproduction | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 200-epoch GCN-DEC models; mean/median refined ARI 0.49711/0.48623, NMI 0.64393/0.63790; native DEC-refined mean/median ARI 0.425/0.412 |
+| `graphst_paper_default_seed41_all12_v1` | canonical GraphST reproduction | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 600-epoch models; mean/median refined ARI 0.53238/0.52823, NMI 0.66317/0.65690; highest of the three reproduced published models |
+| `mucost_paper_default_seed2023_all12_v1` | canonical MuCoST reproduction | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 1000-epoch models; mean/median refined ARI 0.52209/0.51859, NMI 0.65395/0.67062; native 25-neighbor refinement mean/median ARI 0.52472/0.52217 |
+| `staig_official_151673_img_emb_seed39788_v1` | released-config sensitivity | config, embedding, metrics | official notebook hyperparameters with substituted `img_emb`; refined ARI/NMI 0.53694/0.69829 versus notebook 0.68639/0.73059 |
+| `staig_multistage_gene1024_img_emb_seed0_all12_v1` | negative multistage S1 | complete 12-section run | mean/median refined ARI 0.20010/0.19672, NMI 0.31857/0.31947 |
+| `staig_multistage_gene512_img_emb_seed0_all12_v1` | negative multistage S2 | complete 12-section run | mean/median refined ARI 0.21617/0.20898, NMI 0.31172/0.31342 |
+| `staig_multistage_gene256_img_emb_seed0_all12_v1` | negative multistage S3 | complete 12-section run | mean/median refined ARI 0.19941/0.21495, NMI 0.27628/0.28885 |
+| `staig_multistage_gene128_img_emb_seed0_all12_v2` | negative multistage S4 | complete 12-section run | mean/median refined ARI 0.22162/0.21885, NMI 0.27594/0.27542 |
+| `staig_multistage_gbssa_r01_seed0_all12_v1` | negative multistage S5 | complete 12-section run | mean/median refined ARI 0.20720/0.20331, NMI 0.32120/0.32886 |
+| `staig_multistage_gbssa_r011_seed0_all12_v1` | negative multistage S6 | complete 12-section collapsed sensitivity | mean/median refined ARI 0.19461/0.17796, NMI 0.31253/0.32037 |
+| `staig_rich_gene_v2_all33538_stage4096_img_seed0_v1` | canonical rich-gene STAIG | complete 12-section run | mean/median refined ARI 0.48164/0.52293, NMI 0.64409/0.66682; essentially matches expression STAIG |
+| `staig_rich_gene_v2_all33538_final128_img_seed0_v1` | rich bottleneck sensitivity | complete 12-section run | mean/median refined ARI 0.43867/0.44533, NMI 0.56895/0.59228 |
+| `staig_rich_gene_v2_all33538_aligned128_seed0_v1` | rich aligned STAIG | complete 12-section run | mean/median refined ARI 0.49721/0.49365, NMI 0.65027/0.66117 |
+| `staig_rich_gene_v3_all33538_imgk6_stage4096_img_seed0_v1` | negative end-to-end image-guided sensitivity | complete 12-section run | direct stage-4096 median refined ARI improved to 0.46428, but STAIG mean/median refined ARI fell to 0.45837/0.46331 |
+| `staig_expression_aligned_bisector_guidance_seed0_all12_v1` | bisector edge-guidance sensitivity | complete 12-section run; guidance artifact `outputs/multimodal/aligned_bisector_staig_guidance_v1.npz` | 3,000-HVG Expression STAIG with aligned-bisector guidance; mean/median refined ARI 0.49069/0.51526, NMI 0.63808/0.67119; does not beat raw-image Expression STAIG |
+
+Runs `staig_paper_default_img_emb_seed0_151673_v1`, `staig_paper_default_img_emb_seed0_all12_v1`, and `staig_paper_default_img_emb_seed0_all12_v2` are superseded implementation-audit artifacts. They remain immutable but are not canonical.
+
+`staig_multistage_gene128_img_emb_seed0_all12_v1` is an invalid partial run: section 151507 training completed, but float32 tied-GMM covariance fitting failed before artifacts were saved. The corrected `_v2` run fits the same tied-GMM protocol in float64 for numerical stability.
+
+`outputs/evaluation/20260815_multiscale_gene_staig_controls_seed0_v1/` is superseded: its summary pooled refined and unrefined clustering rows, and several `saga` probes reached their iteration limit. Corrected `_v2` separates refinement and uses convergent matched `lbfgs` probes.
 
 ## Gene BYOL GBSSA preparation
 
@@ -36,6 +90,11 @@ their artifacts are verified; a planned run is not a completed artifact.
 | `gene_byol_gbssa_seed0` | verified | early stop epoch 105, best val loss 0.1368; non-collapsed 128-d embeddings exported |
 | `gene_byol_gbssa_seed1` | verified | early stop epoch 122, best val loss 0.1648; unaligned-bisector median ARI 0.14013 |
 | `gene_byol_gbssa_seed2` | verified | early stop epoch 117, best val loss 0.1468; unaligned-bisector median ARI 0.13869 |
+| `gene_byol_multistage_1024_512_256_128_seed0` | verified | best epoch 199, val total loss 0.443116; 47,329 finite 1024/512/256/128-d exports; final effective rank 10.7142 |
+| `rich_gene_v1_hvg3000_seed0` | preliminary rich control | all 47,329 spots; 4096/2048/1024/512/256/128 exports; best epoch 72, stopped epoch 87 |
+| `rich_gene_v1_hvg4096_seed0` | preliminary rich control | all 47,329 spots; 4096/2048/1024/512/256/128 exports; best epoch 78, stopped epoch 93 |
+| `rich_gene_v2_all33538_seed0` | canonical rich gene encoder | all 33,538 genes -> 4096/1024/512/128; best epoch 27, val total loss 1.29656, stopped epoch 37; all 47,329 spots exported |
+| `rich_gene_v3_all33538_imgk6_seed0` | negative image-guided K6 fine-tuning | initialized from canonical rich encoder; best epoch 4, manually stopped after epoch 10 validation divergence; finite 4096/1024/512/128 exports for all 47,329 spots |
 
 ## GBSSA cross-modal runs
 
@@ -47,6 +106,24 @@ All use `gene_byol_gbssa_seed0` against raw external `img_emb`, hidden/output di
 | `gbssa_img_r02_seed0` | 2 | rejected | alignment retrieval converged to chance |
 | `gbssa_img_r05_seed0` | 5 | rejected | alignment retrieval converged to chance |
 | `gbssa_img_r10_seed0` | 10 | rejected | alignment retrieval converged to chance |
+| `multistage_gene128_gbssa_r01_seed0_v2` | 1 | verified multistage baseline | final gene-128 against `img_emb`; best epoch 34, val loss 5.761239; accepted for STAIG S5 |
+| `multistage_gene128_gbssa_r011_seed0_v2` | 1.1 | negative multistage sensitivity | best epoch 51, val loss 5.869197; contracted effective rank; retained only for STAIG S6 |
+| `rich_gene_v2_all33538_gbssa_r01_seed0` | 1 | canonical reconstruction-regularized alignment | all-gene final-128 against `img_emb`; best epoch 40, stopped epoch 55; median R@10 0.07209 and cosine gap 0.11104 |
+
+`rich_gene_v1_hvg4096_gbssa_r01_seed0` is an incomplete exploratory alignment stopped after epoch 4 during scope clarification. It has no prediction export and must not be evaluated. The canonical replacement is `rich_gene_v2_all33538_gbssa_r01_seed0`.
+
+The corresponding multistage runs without the `_v2` suffix are invalid and must not be consumed: their prediction NPZ files contain section IDs truncated to `"1"`. The corrected loader preserves full section strings, and the immutable `_v2` artifacts pass exact `(section_id, barcode)` manifest validation.
+
+## Positive-neighborhood cross-modal runs
+
+| run | status | interpretation |
+|---|---|---|
+| `positive_neighborhood_img_k6r5_seed0` | rejected | raw-output variance regularization allowed angular contraction |
+| `positive_neighborhood_angular_img_k6r5_seed0` | rejected | angular diversity preserved but alignment weight was too weak |
+| `positive_neighborhood_vicreg_img_k6r5_seed0` | rejected | stronger positive alignment contracted outputs to effective rank near 2 |
+| `graph_positive_procrustes_img_k6r5_seed0` | control | collapse-free alignment preserved geometry but bisector did not improve |
+| `graph_pooled_procrustes_img_k6r5_seed0` | retained candidate | 72,089 pruned edges; graph pooling plus orthogonal positive alignment; concatenation is strongest |
+| `spatial_multimodal_contrastive_img_k6r5_seed0` | retained candidate | 30-epoch unified gene-gene, image-image, and cross-modal graph contrast; strongest current domain-discovery result |
 
 The runs immediately below (`layer_projector*`) were produced by
 `python -m src.train.train --run-name <name> ...` (see `src/train/train.py`; run

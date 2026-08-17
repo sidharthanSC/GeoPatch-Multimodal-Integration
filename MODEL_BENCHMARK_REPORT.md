@@ -19,10 +19,13 @@ The central question is not only whether InfoNCE retrieves the matching modality
 
 - The current bisector result, pooled over all 47,329 spots, is accuracy `32.2%`, ARI `0.090`, and NMI `0.163`. This is a valid label-count-informed pooled clustering result, but it is not directly comparable with the standard DLPFC benchmark, which clusters each section independently and summarizes 12 section-level ARI/NMI values.
 - The bisector's `32.2%` Hungarian-matched accuracy is below the pooled `37.2%` majority-class classifier baseline. More importantly, its low ARI and NMI show that the current pooled partition weakly matches cortical layers. Pooling may expose section/donor effects, but that explanation must be tested rather than assumed.
-- STAIG reports median per-section ARI `0.69` and NMI `0.71`. These values cannot be ranked directly against the pooled bisector ARI `0.090`; the bisector must first be evaluated separately on the same 12 sections with a matched clustering and refinement protocol.
+- Values printed for STAIG across the 12 sections have mean ARI/NMI `0.692/0.712` and median `0.680/0.715`. Earlier drafts called `0.69/0.71` medians; the section-level arithmetic shows they are means to figure precision. These values cannot be ranked directly against pooled bisector ARI `0.090`.
 - The current attention result, `60.8%` test accuracy, is supervised random-spot classification. It is not comparable with unsupervised ARI/NMI from STAIG or other domain-clustering models. It also remains transductive because the upstream gene BYOL and InfoNCE representations used all sections before the classifier split.
 - The attention result is promising relative to this repository's current supervised MDM result (`34.96%`), but it does not yet show that attention is responsible for the gain. It lacks single-modality, concatenation, linear, parameter-matched MLP, and attention-block ablations.
 - The highest-priority benchmark is a common per-section evaluator. The highest-priority attention study is an equal-split, equal-capacity supervised ablation suite. Joint integration and leave-one-donor-out generalization must remain separate tables.
+- A new seed-0 graph-pooled orthogonal positive-only candidate reaches median per-section KMeans ARI/NMI `0.177/0.257` with aligned concatenation and refined ARI/NMI `0.209/0.294`. The equal bisector remains weaker (`0.161/0.240`, refined `0.180/0.273`). This improves repository controls but remains far below STAIG's displayed mean `0.692/0.712`.
+- The subsequent one-seed unified spatial multimodal contrastive model improves the equal bisector to ARI/NMI `0.198/0.291` and refined `0.215/0.329`; concat PCA-128 reaches refined ARI/NMI `0.224/0.320`. These are the strongest repository domain results, but they use one model and clustering seed and are not evidence of perfect layer recovery.
+- A repository-local STAIG graph-architecture adaptation now reaches mean/median refined ARI `0.507/0.518` and NMI `0.644/0.674`. It substantially outperforms GeoPatch candidates and the SpaGCN rows in STAIG's benchmark, but does not reproduce STAIG mean ARI `0.692`. It substitutes external `img_emb` for STAIG's unavailable filtered-patch BYOL and tied sklearn GMM for R mclust EEE; see `PRIOR_MODEL_PROTOCOLS.md`.
 
 ## Why Results Must Be Grouped
 
@@ -95,7 +98,9 @@ These values use 12 DLPFC sections evaluated independently unless stated otherwi
 
 | Method | Aggregate statistic | ARI | NMI | Source status |
 |---|---|---:|---:|---|
-| STAIG | Median across 12 sections | **0.69** | **0.71** | Primary paper, exact prose value |
+| STAIG | Mean of 12 values printed in Figs. S1-S2 | **0.692** | **0.712** | Primary supplement; median is 0.680/0.715 |
+| STAIG adaptation (`img_emb`) | Mean across 12 sections | 0.507 | 0.644 | Repository run; 15-neighbor refined |
+| SpaGCN rerun in STAIG | Mean of 12 values printed in Figs. S1-S2 | 0.438 | 0.592 | Third-party rerun; exact extracted-embedding reclustering underdisclosed |
 | GraphST | Median across 12 sections | **0.60** | Not explicitly printed | Primary paper |
 | DeepST | Mean across 12 sections | **0.515 +/- 0.011** | Not explicitly printed | Primary paper; mean is not a median |
 | MuCoST | Mean across 12 sections | **0.526** | Not explicitly printed | Primary paper |
@@ -179,6 +184,57 @@ STAIG's main text describes its NMI as highest, but the supplementary figure pri
 | Attention fusion | Supervised | Random pooled 70/30 outer spot split with internal validation | Accuracy `60.8%` | Strongest current transductive supervised result |
 | Cross-modal `gene_emb <-> img_emb` | Self-supervised correspondence | Random spot train/validation, no test | Validation in-batch retrieval `1.02%`; batch chance about `0.20%` | Modest exact-pair alignment, not clustering evidence |
 | Cross-modal `gene_emb <-> proj_emb` | Label-assisted upstream | Random spot train/validation, no test | Validation in-batch retrieval `0.72%` | Weaker exact-pair alignment; not a fully unsupervised path |
+| Graph-pooled orthogonal aligned bisector | Positive-only, transductive | Per-section KMeans, 10 seeds | ARI `0.161`, NMI `0.240`; refined `0.180/0.273` | Equal bisector is not the strongest new representation |
+| Graph-pooled orthogonal aligned concatenation | Positive-only, transductive | Per-section KMeans, 10 seeds | ARI `0.177`, NMI `0.257`; refined `0.209/0.294` | Strongest new common clustering row; still not STAIG-competitive |
+| Spatial multimodal contrastive bisector | Graph multi-positive contrastive, transductive | Per-section KMeans, one seed | ARI `0.198`, NMI `0.291`; refined `0.215/0.329` | Strongest equal-bisector result; uses spatial positives and false-negative masking |
+| Spatial multimodal contrastive concat PCA-128 | Graph multi-positive contrastive, transductive | Per-section KMeans, one seed | ARI `0.206`, NMI `0.282`; refined `0.224/0.320` | Strongest GeoPatch ARI; still far below STAIG |
+| STAIG adaptation using fixed `img_emb` | Graph neighbor contrastive, transductive | Independent per-section tied GMM, one seed | Mean ARI/NMI `0.504/0.639`; refined `0.507/0.644` | Strongest repository domain result, but not an exact STAIG image-pipeline reproduction |
+
+### STAIG Adaptation Run
+
+Canonical run: `outputs/prior_models/staig_paper_default_img_emb_seed0_all12_v3/`.
+
+The adaptation was implemented under `src/prior_models/staig/` and trained independently on every DLPFC section. No cortical labels entered graph construction or representation training. Labels supplied only the observed number of clusters, five or seven depending on the section, and were used afterward for ARI/NMI.
+
+| Section | Clusters | ARI | NMI | Refined ARI | Refined NMI |
+|---|---:|---:|---:|---:|---:|
+| 151507 | 7 | 0.57811 | 0.68917 | 0.58467 | 0.69600 |
+| 151508 | 7 | 0.47885 | 0.63180 | 0.48575 | 0.64228 |
+| 151509 | 7 | 0.57788 | 0.67872 | 0.58299 | 0.68271 |
+| 151510 | 7 | 0.48966 | 0.65965 | 0.49782 | 0.66470 |
+| 151669 | 5 | 0.34928 | 0.49760 | 0.35291 | 0.49643 |
+| 151670 | 5 | 0.39435 | 0.48611 | 0.39941 | 0.50087 |
+| 151671 | 5 | 0.47287 | 0.62628 | 0.48047 | 0.63697 |
+| 151672 | 5 | 0.54583 | 0.67647 | 0.54587 | 0.67729 |
+| 151673 | 7 | 0.55320 | 0.69355 | 0.55280 | 0.69495 |
+| 151674 | 7 | 0.52644 | 0.68197 | 0.52451 | 0.68085 |
+| 151675 | 7 | 0.56992 | 0.68249 | 0.56409 | 0.67809 |
+| 151676 | 7 | 0.51027 | 0.66945 | 0.51190 | 0.67125 |
+| **Mean** | | **0.50389** | **0.63944** | **0.50693** | **0.64353** |
+| **Median** | | **0.51835** | **0.67296** | **0.51821** | **0.67427** |
+
+Canonical configuration:
+
+- Existing per-section 3,000 `seurat_v3` HVGs and expression scaled to `[0,10]`.
+- Symmetric Euclidean coordinate 5-NN graph.
+- Repository external `img_emb`, standardized per section and reduced to PCA-16.
+- Image-distance-guided stochastic edge deletion and 40 image KMeans pseudo-classes for debiased negatives.
+- Two graph views with 10% feature-column masking.
+- One 64-dimensional PReLU GCN layer and a 64-dimensional ELU projection MLP.
+- Temperature `10`, 400 epochs, Adam learning rate `5e-4`, weight decay `1e-5`, seed `0`.
+- Tied-full-covariance sklearn GMM as the local analogue of R mclust EEE, followed by unconditional plurality refinement over 15 coordinate neighbors.
+
+The adaptation does not reproduce STAIG mean ARI `0.69167`; its mean refined ARI is lower by `0.18473`. It nevertheless exceeds the SpaGCN values displayed in STAIG's own rerun, whose mean ARI is `0.43833`. That comparison remains contextual because STAIG does not fully disclose how it reclustered SpaGCN's extracted pre-clustering representation.
+
+The principal reproduction gap is the image input. Published STAIG trains a ResNet50 BYOL model on 512 by 512 H&E patches cropped at 3.5 times the fiducial diameter after 7 by 7 Gaussian blur and 245-275 band-pass filtering. Those patches and STAIG-specific image embeddings are unavailable here, so fixed external `img_emb` was substituted. R mclust is also unavailable, and the canonical run uses float32 and one seed. The released `151673` notebook additionally conflicts with the supplement defaults: its tuned `tau=35`, 300 epochs, 10%/20% masks, 80 pseudo-clusters, and seed 39788 produced refined ARI/NMI `0.53694/0.69829` with repository `img_emb`, versus the notebook's `0.68639/0.73059`.
+
+Artifacts and extended protocol:
+
+- `outputs/prior_models/staig_paper_default_img_emb_seed0_all12_v3/checkpoints/`: 12 section model checkpoints.
+- `outputs/prior_models/staig_paper_default_img_emb_seed0_all12_v3/embeddings/`: embeddings, assignments, labels, barcodes, coordinates, and loss histories.
+- `outputs/prior_models/staig_paper_default_img_emb_seed0_all12_v3/section_metrics.csv`: complete section metrics.
+- `outputs/evaluation/20260815_staig_adaptation_vs_published_v1/`: section-level published comparison.
+- `PRIOR_MODEL_PROTOCOLS.md`: complete STAIG and SpaGCN protocol audit, equations, source files, conflicts, and unresolved disclosure details.
 
 ### Audit Of The Bisector Evaluation
 
@@ -381,8 +437,9 @@ If A9 does not beat A5 at matched capacity, there is no evidence that attention 
 - Standard exact-spot negatives.
 - Immediate spatial neighbors excluded from negatives.
 - Same-spot positives plus label-free spatial-neighbor positives.
+- Positive-only same-spot and pruned spatial-neighbor alignment with explicit variance/covariance collapse prevention.
 
-The final two variants test the main suspected conflict: exact-spot retrieval may disperse domain-related spots.
+The final three variants test the main suspected conflict: exact-spot retrieval may disperse domain-related spots.
 
 ## Reporting Template
 
@@ -450,6 +507,8 @@ FOSCTTM | cosine gap | effective rank
 
 ## Final Position
 
+The superseding all-gene study is reported in `observations/MULTISCALE_GENE_STAIG_BENCHMARK.md`. The reconstruction-preserving `33,538 -> 4,096 -> 1,024 -> 512 -> 128` encoder reaches median refined STAIG ARI `0.52293` at stage 4,096, essentially matching the repository expression-STAIG control (`0.51821`). Final-128 reaches `0.44533`, and reconstruction-regularized alignment reaches `0.49365`. The historical 3,000-HVG ablation is retained only to document the information-loss failure that motivated the new encoder.
+
 The existing GeoPatch evidence supports modest same-spot cross-modal alignment and a promising supervised nonlinear fusion result. It does not yet establish successful unsupervised cortical-domain discovery, attention-specific gains, joint-section integration, or donor-level generalization.
 
-The fair question is not whether pooled bisector ARI `0.090` is numerically below STAIG median ARI `0.69`; those values come from different protocols. The fair question is whether the aligned bisector improves over gene-only, image-only, unaligned fusion, aligned single modalities, and concatenation when every representation is clustered section-by-section with the same backend, cluster count, refinement, and seeds. That common experiment will locate the method relative to modern models and reveal which architectural component contributes to any gain.
+The fair question is not whether pooled bisector ARI `0.090` is numerically below STAIG mean ARI `0.692`; those values come from different protocols. The fair question is whether the aligned bisector improves over gene-only, image-only, unaligned fusion, aligned single modalities, and concatenation when every representation is clustered section-by-section with the same backend, cluster count, refinement, and seeds. That common experiment will locate the method relative to modern models and reveal which architectural component contributes to any gain.

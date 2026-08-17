@@ -2,10 +2,21 @@ import numpy as np
 import pytest
 
 from src.multimodal.representations import (
+    existing_embedding_representations,
     l2_normalize,
     normalized_mean,
     weighted_normalized_mean,
 )
+from src.multimodal.bisector import bisector_embedding
+
+
+def test_bisector_is_unit_normalized_and_symmetric():
+    first = np.asarray([[1.0, 0.0], [0.0, 1.0]])
+    second = np.asarray([[0.0, 1.0], [1.0, 0.0]])
+    forward = bisector_embedding(first, second)
+    reverse = bisector_embedding(second, first)
+    np.testing.assert_allclose(forward, reverse)
+    np.testing.assert_allclose(np.linalg.norm(forward, axis=1), 1.0)
 
 
 def test_normalized_mean_is_unit_length() -> None:
@@ -25,3 +36,16 @@ def test_weighted_mean_endpoints_match_modalities() -> None:
     image = np.array([[1.0, -1.0], [0.0, 1.0]], dtype=np.float32)
     np.testing.assert_allclose(weighted_normalized_mean(gene, image, 1.0), l2_normalize(gene))
     np.testing.assert_allclose(weighted_normalized_mean(gene, image, 0.0), l2_normalize(image))
+
+
+def test_registry_includes_aligned_weight_curve() -> None:
+    values = np.eye(3, dtype=np.float32)
+    result = existing_embedding_representations(
+        {
+            "gene_emb": values,
+            "img_emb": values,
+            "gene_emb_cm_img": values,
+            "img_emb_cm": values,
+        }
+    )
+    assert "R13_aligned_weighted_gene_0p25" in result

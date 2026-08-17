@@ -91,10 +91,17 @@ class CrossModalModel(nn.Module):
         )
         self.logit_scale = nn.Parameter(torch.tensor(config.logit_scale_init))
 
+    def project_raw(
+        self, gene_batch: torch.Tensor, image_batch: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Project both modalities without normalization."""
+        return self.gene_projector(gene_batch), self.image_projector(image_batch)
+
     def forward(self, gene_batch: torch.Tensor, image_batch: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Project and L2-normalize both modalities; does not apply the temperature."""
-        gene_proj = F.normalize(self.gene_projector(gene_batch), dim=-1)
-        image_proj = F.normalize(self.image_projector(image_batch), dim=-1)
+        gene_raw, image_raw = self.project_raw(gene_batch, image_batch)
+        gene_proj = F.normalize(gene_raw, dim=-1)
+        image_proj = F.normalize(image_raw, dim=-1)
         return gene_proj, image_proj
 
     @torch.no_grad()
@@ -203,3 +210,103 @@ def retrieval_accuracy(gene_proj: torch.Tensor, image_proj: torch.Tensor) -> flo
     acc_gene_to_image = (logits.argmax(dim=1) == labels).float().mean()
     acc_image_to_gene = (logits.T.argmax(dim=1) == labels).float().mean()
     return float((acc_gene_to_image + acc_image_to_gene).item() / 2.0)
+
+
+@dataclass(frozen=True)
+class PositiveNeighborhoodLoss:
+    """Positive-only cross-modal loss and its diagnostic components."""
+
+    total: torch.Tensor
+    self_alignment: torch.Tensor
+    neighbor_alignment: torch.Tensor
+    gene_variance: torch.Tensor
+    image_variance: torch.Tensor
+    gene_covariance: torch.Tensor
+    image_covariance: torch.Tensor
+
+
+def variance_loss(
+    embeddings: torch.Tensor, gamma: float = 1.0, eps: float = 1e-4
+) -> torch.Tensor:
+    """VICReg variance floor that prevents constant positive-only outputs."""
+    if embeddings.ndim != 2 or embeddings.shape[0] < 2:
+        raise ValueError("variance_loss requires at least two 2-D embedding rows")
+    std = torch.sqrt(embeddings.var(dim=0) + eps)
+    return torch.relu(gamma - std).mean()
+
+
+def covariance_loss(embeddings: torch.Tensor) -> torch.Tensor:
+    """VICReg off-diagonal covariance penalty, normalized by dimension."""
+    if embeddings.ndim != 2 or embeddings.shape[0] < 2:
+        raise ValueError("covariance_loss requires at least two 2-D embedding rows")
+    centered = embeddings - embeddings.mean(dim=0)
+    covariance = centered.T @ centered / (embeddings.shape[0] - 1)
+    off_diagonal = covariance.flatten()[:-1].view(
+        covariance.shape[0] - 1, covariance.shape[0] + 1
+    )[:, 1:].flatten()
+    return off_diagonal.square().sum() / embeddings.shape[1]
+
+
+def positive_neighborhood_loss(
+    gene_raw: torch.Tensor,
+    image_raw: torch.Tensor,
+    anchor_positions: torch.Tensor,
+    neighbor_edges: torch.Tensor,
+    alignment_weight: float = 25.0,
+    neighbor_weight: float = 1.0,
+    variance_weight: float = 25.0,
+    variance_gamma: float = 1.0,
+    covariance_weight: float = 1.0,
+) -> PositiveNeighborhoodLoss:
+    """Align same spots and retained spatial neighbors without negative pairs.
+
+    ``neighbor_edges`` contains directed ``(anchor, neighbor)`` positions into the
+    gathered embedding tensors. Variance and covariance regularization are evaluated
+    only on unique anchors, so frequently referenced neighbors are not over-weighted.
+    """
+    if gene_raw.ndim != 2 or image_raw.ndim != 2 or gene_raw.shape != image_raw.shape:
+        raise ValueError("gene_raw and image_raw must be matching 2-D tensors")
+    if anchor_positions.ndim != 1 or anchor_positions.numel() < 2:
+        raise ValueError("anchor_positions must contain at least two rows")
+    if neighbor_edges.ndim != 2 or neighbor_edges.shape[0] != 2:
+        raise ValueError("neighbor_edges must have shape (2, n_edges)")
+    if min(alignment_weight, neighbor_weight, variance_weight, covariance_weight) < 0:
+        raise ValueError("loss weights must be non-negative")
+
+    gene = F.normalize(gene_raw, dim=-1)
+    image = F.normalize(image_raw, dim=-1)
+    anchors = anchor_positions.long()
+    self_alignment = (1.0 - (gene[anchors] * image[anchors]).sum(dim=1)).mean()
+
+    if neighbor_edges.shape[1] == 0:
+        neighbor_alignment = gene_raw.new_zeros(())
+    else:
+        source, target = neighbor_edges.long()
+        gene_to_image = 1.0 - (gene[source] * image[target]).sum(dim=1)
+        image_to_gene = 1.0 - (image[source] * gene[target]).sum(dim=1)
+        neighbor_alignment = (gene_to_image + image_to_gene).mean() / 2.0
+
+    # The exported representation is unit-normalized. Regularizing raw outputs would
+    # allow radial norm variation to hide collapsed directions, so scale normalized
+    # coordinates by sqrt(d), as in an isotropic unit-sphere representation.
+    scale = math.sqrt(gene.shape[1])
+    gene_anchor_regularized = gene[anchors] * scale
+    image_anchor_regularized = image[anchors] * scale
+    gene_variance = variance_loss(gene_anchor_regularized, gamma=variance_gamma)
+    image_variance = variance_loss(image_anchor_regularized, gamma=variance_gamma)
+    gene_covariance = covariance_loss(gene_anchor_regularized)
+    image_covariance = covariance_loss(image_anchor_regularized)
+    total = (
+        alignment_weight * (self_alignment + neighbor_weight * neighbor_alignment)
+        + variance_weight * (gene_variance + image_variance) / 2.0
+        + covariance_weight * (gene_covariance + image_covariance) / 2.0
+    )
+    return PositiveNeighborhoodLoss(
+        total=total,
+        self_alignment=self_alignment.detach(),
+        neighbor_alignment=neighbor_alignment.detach(),
+        gene_variance=gene_variance.detach(),
+        image_variance=image_variance.detach(),
+        gene_covariance=gene_covariance.detach(),
+        image_covariance=image_covariance.detach(),
+    )

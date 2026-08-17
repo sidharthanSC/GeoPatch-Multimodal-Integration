@@ -10,11 +10,13 @@ Status values: `PENDING`, `ACTIVE`, `BLOCKED`, `COMPLETED`, `PARTIAL`.
 
 - Primary path: fixed external `img_emb` + newly trained `gene_emb`; `proj_emb` remains a separate label-assisted ablation.
 - Cross-modal model: two symmetric, jointly optimized modality towers; no cross-modal EMA target branch.
-- Objective: gradient-balanced same-spot CLIP (GBSSA), retaining all InfoNCE negatives.
+- Historical baseline objective: gradient-balanced same-spot CLIP (GBSSA), retaining all InfoNCE negatives.
+- New candidate objective: positive-only same-spot and pruned spatial-neighbor cross-modal alignment with VICReg variance/covariance anti-collapse regularization. GBSSA remains available as an explicit baseline.
 - Primary ratio sweep: `1, 2, 5, 10`; ratio `1` is exactly standard symmetric CLIP.
 - Initial representation seeds: `0, 1, 2` where compute permits.
+- Current compute policy: use one seed by default and at most two seeds for new studies; treat the 12 sections as biological evaluation units while clearly retaining seed variability as a residual limitation.
 - Evaluation authority: `MODEL_BENCHMARK_REPORT.md`.
-- Generated result ledger: `MULTIMODAL_EVALUATION_RESULTS.md`.
+- Generated result ledger: `observations/MULTIMODAL_EVALUATION_RESULTS.md`.
 - Do not edit `CLAUDE.md` or `PROGRESS.md`.
 - Do not overwrite `checkpoints/dlpfc.pkl` or a prior named run.
 
@@ -38,7 +40,7 @@ Deliverables:
 
 - [x] Preserve the evaluation protocol in `MODEL_BENCHMARK_REPORT.md`.
 - [x] Create this resumable execution ledger.
-- [x] Create `MULTIMODAL_EVALUATION_RESULTS.md` for generated results.
+- [x] Create `observations/MULTIMODAL_EVALUATION_RESULTS.md` for generated results.
 - [x] Link the ledgers from `AGENTS.md`, `README.md`, and `outputs/README.md`.
 - [x] Record the first verified environment and test command.
 
@@ -46,7 +48,7 @@ Artifacts:
 
 - `EXECUTION_CHECKPOINTS.md`
 - `MODEL_BENCHMARK_REPORT.md`
-- `MULTIMODAL_EVALUATION_RESULTS.md`
+- `observations/MULTIMODAL_EVALUATION_RESULTS.md`
 
 Completion gate: documentation links exist and `git diff --check` passes.
 
@@ -248,6 +250,15 @@ Seed-0 ratio results:
 
 The requested 5x/10x exact score-gradient weighting is therefore rejected for the current architecture. Repeating collapsed ratios across seeds is not scientifically justified. Transition ratios 1.1/1.25/1.5 are added as a diagnostic follow-up.
 
+Positive-neighborhood follow-up implementation:
+
+- `src/cross_modal/neighborhood.py` can build coordinate kNN candidates within section and split for inductive training, or over each complete section for the transductive domain-discovery regime.
+- Frozen gene and image cosine rankings prune candidates: each endpoint nominates only neighbors appearing in both modality-specific top lists, and an undirected edge survives only mutual nomination.
+- `src/cross_modal/model.py` aligns exact gene/image pairs and both cross-modal directions of retained spatial edges without constructing different-spot negatives.
+- VICReg variance and covariance terms are mandatory because paired attraction alone has a constant-output optimum.
+- `src/cross_modal/train.py --objective positive_neighborhood` is the new default; `--objective clip` preserves the prior CLIP/GBSSA path.
+- Three nonlinear positive-only variants were run and rejected because they either contracted angular geometry or failed to align. The retained seed-0 candidate uses full-section graph pooling followed by closed-form orthogonal positive alignment, which prevents learned alignment collapse exactly.
+
 ## Phase 7: Representation And Clustering Benchmark
 
 Status: `PARTIAL`
@@ -356,7 +367,7 @@ Status: `PENDING`
 
 Deliverables:
 
-- [ ] Fill `MULTIMODAL_EVALUATION_RESULTS.md` from immutable result artifacts.
+- [ ] Fill `observations/MULTIMODAL_EVALUATION_RESULTS.md` from immutable result artifacts.
 - [ ] Update `outputs/README.md` with every completed run and artifact path.
 - [ ] Update `README.md` commands and status.
 - [ ] Update `AGENTS.md` only with stable contracts and canonical artifact locations.
@@ -391,3 +402,19 @@ Append concise entries after verified milestones.
 | 2026-08-14 | 9 | PARTIAL | Two STAIG subsets | Alignment improves mixing but biological ARI remains low; local mixing metrics labeled as surrogates |
 | 2026-08-14 | 7 | PARTIAL | Weighted angular curve | Seed-0 gene/image weight 0.25/0.75 ARI 0.16564; sensitivity only |
 | 2026-08-14 | 9 | BLOCKED | All-12 integration v1 | Timed out after 20 minutes with no artifacts; requires cached neighbors/filtering |
+| 2026-08-14 | 6 | PARTIAL | Positive-neighborhood alignment implementation | 16 focused tests and 21 full tests passed; no training artifact or biological result yet |
+| 2026-08-14 | 6-9 | PARTIAL | Graph-pooled Procrustes seed 0 | Positive-only MLP variants failed; collapse-free graph-pooled orthogonal candidate reached refined per-section concat ARI/NMI 0.209/0.294 and four-section integration ARI/NMI 0.168/0.226 |
+| 2026-08-14 | 6-9 | PARTIAL | Spatial multimodal contrastive seed 0 | Unified graph positives reached refined bisector ARI/NMI 0.215/0.329 and concat-PCA ARI/NMI 0.224/0.320; four-section bisector 0.164/0.235; one-seed limitation retained |
+| 2026-08-15 | prior-model reproduction | COMPLETED | STAIG adaptation seed 0 | 12 independent paper-default models reached mean/median refined ARI 0.507/0.518 and NMI 0.644/0.674; below published STAIG mean 0.692 but above SpaGCN rows mean 0.438; exact deviations documented in `PRIOR_MODEL_PROTOCOLS.md` |
+| 2026-08-15 | multiscale gene STAIG | COMPLETED | S1-S6 and `20260815_multiscale_gene_staig_controls_seed0_v2` | All six 12-section runs verified; best multistage median refined ARI 0.21885 versus expression STAIG 0.51821; ratio-1 alignment did not improve clustering |
+| 2026-08-15 | rich all-gene encoder | COMPLETED | `rich_gene_v2_all33538_seed0` | All 33,538 genes -> 4096/1024/512/128; best epoch 27; direct stage-4096 refined median ARI 0.44860 |
+| 2026-08-15 | rich alignment | COMPLETED | `rich_gene_v2_all33538_gbssa_r01_seed0` | Median R@10 0.07209, FOSCTTM 0.11712, cosine gap 0.11104; projected effective ranks 45.22/87.00 |
+| 2026-08-15 | targeted rich STAIG | COMPLETED | three `staig_rich_gene_v2_all33538_*` runs | Stage-4096 median refined ARI 0.52293; final-128 0.44533; aligned-128 0.49365 |
+| 2026-08-15 | image-guided rich gene | COMPLETED NEGATIVE | `rich_gene_v3_all33538_imgk6_seed0` and matched stage-4096 STAIG | Best gene epoch 4; direct stage-4096 median refined ARI 0.46428, but STAIG mean/median refined ARI fell to 0.45837/0.46331 |
+| 2026-08-15 | bisector-guided STAIG | COMPLETED SENSITIVITY | `staig_expression_aligned_bisector_guidance_seed0_all12_v1` | Expression nodes retained; aligned bisector replaced raw image guidance. Mean/median refined ARI 0.49069/0.51526 versus raw-image Expression STAIG 0.50693/0.51821 |
+| 2026-08-15 | adjacency-only clustering | COMPLETED NEGATIVE | `20260815_adjacency_clustering_seed0_v1` | Median refined ARI 0.19285 binary, 0.19298 all-gene weighted, and 0.20916 image weighted; adjacency alone does not approach Expression STAIG 0.51821 |
+| 2026-08-17 | SpaGCN reproduction | COMPLETED | `spagcn_paper_default_seed100_all12_v1` | 12 independent 200-epoch GCN-DEC models; mean/median refined ARI 0.49689/0.48560, NMI 0.64368/0.63789; native DEC-refined mean/median ARI 0.42480/0.41152; kmeans init (no louvain/igraph) |
+| 2026-08-17 | GraphST reproduction | COMPLETED | `graphst_paper_default_seed41_all12_v1` | 12 independent 600-epoch models; mean/median refined ARI 0.53241/0.52795, NMI 0.66255/0.65692; highest refined ARI of the three reproduced published models; sklearn NN instead of ot.dist |
+| 2026-08-17 | MuCoST reproduction | COMPLETED | `mucost_paper_default_seed2023_all12_v1` | 12 independent 1000-epoch models; mean/median refined ARI 0.52209/0.51859, NMI 0.65395/0.67062; native 25-neighbor refinement mean/median ARI 0.52472/0.52217; dependency-light graphs/GCN (no torch_geometric) |
+| 2026-08-17 | prior-model comparison table | COMPLETED | `src/prior_models/prior_model_comparison_table.md` | Section-id rows x (ARI/NMI subcolumns per model: STAIG, SpaGCN, GraphST, MuCoST, MP-MNCA); final rows = Mean and Median across sections; MP-MNCA NMI for first 6 sections recomputed from saved `refined_predictions`; GraphST tops reproduced methods (mean refined ARI 0.532); SEDR/DeepST columns still absent |
+| 2026-08-17 | layer-annotation plots | COMPLETED | `layer_annotation_plots/<model>/DLPFC_151507.png` and `layer_annotation_plots/subplots/DLPFC_151507.png` | Reused per-section trained predictions for 151507 (no retraining needed); plots all five models + ground truth with a common layer color map (Hungarian-matched to ground truth) via `src/prior_models/plot_layer_annotations.py` |
