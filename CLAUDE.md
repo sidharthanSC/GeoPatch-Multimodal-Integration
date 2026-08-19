@@ -35,6 +35,26 @@ overall status.
   `src/test/`, not a top-level `tests/` directory (`pyproject.toml`'s `testpaths` is set
   accordingly). This test is skipped unless `checkpoints/dlpfc.pkl` already exists — build it
   first with `DlpfcDataset.build_or_load(root=".", checkpoint_path="checkpoints/dlpfc.pkl")`.
+- `src/datasets/her2st.py` + `her2st_build.py` + `her2st_image_features.py` — the HER2ST
+  (HER2-positive breast tumour) counterpart of the above, added so the pipeline has a second,
+  non-cortical benchmark. `Her2stDataset` mirrors `DlpfcDataset`'s API, sample dict and
+  checkpoint schema exactly (`checkpoints/her2st.pkl`, built the same way via `build_or_load`),
+  so DLPFC-facing code runs against it unchanged. Two dataset-level differences: `did` is the
+  patient id `1`–`8` (`A`–`H`), and **`gt` is `NaN` for most spots** — a pathologist annotated
+  only 8 of the 36 sections (`ANNOTATED_SECTIONS` = A1, B1, C1, D1, E1, F1, G2, H1; 3,481 of
+  13,620 spots), so use `annotated_indices()` for anything label-evaluated. The source data is
+  a sparse clone of https://github.com/almaan/her2st at `Dataset/her2st_repo/` (raw `.tsv.gz`
+  counts, spot files, H&E jpgs, annotations — not 10x Visium, so there is no `spaceranger`
+  output to read); `her2st_build.py` turns it into DLPFC-shaped `data/her2st/<section>.h5ad`
+  (shared 18,758-gene union index, STAIG's exact `seurat_v3` HVG → `normalize_total(1e4)` →
+  `log1p` → `scale(max_value=10)` preprocessing, raw counts kept in `layers["counts"]`), and
+  `her2st_image_features.py` generates `obsm["img_emb"]` by porting STAIG's BYOL histology
+  pipeline (`example/Fig-3b.ipynb`), whose recipe was verified by reproducing the DLPFC
+  `img_emb` from `Dataset/DLPFC/151507/embeddings.npy`. Both modules' docstrings list the
+  deviations from STAIG; the load-bearing one is `--batch-size 8` (STAIG's 43 needs ~20 GB and
+  swaps a 16 GB Mac to a standstill).
+- `src/test/test_her2st_checkpoint.py` — pytest tests for `Her2stDataset`, skipped unless
+  `checkpoints/her2st.pkl` exists.
 - `src/train/` — a second-stage projection network trained on top of the frozen `img` (BYOL
   image-encoder) embeddings from `DlpfcDataset`, not on raw expression. Same-vs-different pairs
   are sampled in a class-balanced way and pulled together / pushed apart by a margin-based cosine
@@ -74,8 +94,8 @@ overall status.
   plus their barcodes, are written out. This is the check that caught the `slice_projector`
   pairing-key bug above. `python -m src.analysis.knn_projection_analysis [--embeddings-npz PATH]`.
 - `checkpoints/` — git-ignored, holds `dlpfc.pkl` (~5 GB; contains the full cached `AnnData`
-  objects, not just a handful of arrays). Regenerate rather than expect it to be present in a
-  fresh checkout.
+  objects, not just a handful of arrays) and `her2st.pkl` (~2 GB, same shape). Regenerate rather
+  than expect either to be present in a fresh checkout.
 - `outputs/` — git-ignored (`outputs/checkpoints/`, `outputs/metrics/`, `outputs/predictions/`,
   `outputs/plots/`, `outputs/analysis/`, plus `outputs/runs|tables|figures|splits/`), populated by
   the scripts above:
@@ -148,6 +168,17 @@ python -m src.plots.plot_metrics                 # plot outputs/metrics/layer_pr
 python -m src.analysis.knn_projection_analysis   # before/after k-NN comparison, see src/analysis/ above
 ```
 
+Rebuilding HER2ST from scratch (only needed if `data/her2st/` or `checkpoints/her2st.pkl` is
+missing — the second step trains BYOL per section and takes ~45 min on an M-series Mac):
+
+```bash
+git clone --filter=blob:none --sparse https://github.com/almaan/her2st.git Dataset/her2st_repo
+(cd Dataset/her2st_repo && git sparse-checkout set data/ST-cnts data/ST-imgs data/ST-spotfiles data/ST-pat/lbl)
+python -m src.datasets.her2st_build              # -> data/her2st/<section>.h5ad
+python -m src.datasets.her2st_image_features     # -> obsm["img_emb"], Dataset/her2st/<section>/embeddings.npy
+python -c "from src.datasets.her2st import Her2stDataset; Her2stDataset.build_or_load(root='.', checkpoint_path='checkpoints/her2st.pkl')"
+```
+
 `TrainConfig` fields are exposed 1:1 as CLI flags (kebab-case, e.g. `--margin`, `--ema-decay`,
 `--negative-margin` — the exact set depends on the current contents of `src/train/train.py`).
 
@@ -159,7 +190,9 @@ Two separate data trees exist and serve different purposes:
   (`151507`–`151676`), `Human_Breast_Cancer`, `Mouse_Brain_Anterior`/`Posterior`,
   `Mouse_Hippocampus_Tissue_slide-seqV2` (split into parts), `Mouse_Olfactory_Stereo-seq`,
   `Mouse_horizontal`, `starmap`, plus a few pre-built cross-slide `integration*.h5ad` /
-  `partial_integration.h5ad` files.
+  `partial_integration.h5ad` files. Its one subdirectory, `data/her2st/`, holds the 36 HER2ST
+  sections (`A1`–`H3`) built by `src/datasets/her2st_build.py` — these are generated, not
+  supplied, and are git-ignored along with the rest of `data/`.
 - `Dataset/` — richer, per-sample directories, organized by platform (git-ignored — large
   binaries, not tracked):
   - `Dataset/DLPFC/<slide_id>/` — `filtered_feature_bc_matrix.h5`, `spatial/`, `truth.txt`
@@ -171,6 +204,11 @@ Two separate data trees exist and serve different purposes:
     shape as the DLPFC entries.
   - `Dataset/other/` — additional platforms used for cross-platform evaluation: MERFISH,
     Stereo-seq, Slide-seqV2, STARmap, each with platform-specific raw/processed files.
+  - `Dataset/her2st_repo/` — sparse clone of the upstream `almaan/her2st` repository (the
+    *source* of HER2ST: `data/ST-cnts/`, `ST-spotfiles/`, `ST-imgs/`, `ST-pat/lbl/`), and
+    `Dataset/her2st/<section>/` — its *derived* artifacts, laid out like the DLPFC entries:
+    `embeddings.npy` (2,048-d BYOL features) plus the `clip_image_filter/` patches they came
+    from. Both are regenerated by the two `src/datasets/her2st_*.py` scripts.
 
 When `Dataset/DLPFC/<slide>/embeddings.npy` or `model.pt` already exists, treat it as a cached
 artifact from a prior run, not something to regenerate unless the task requires it.
