@@ -13,6 +13,9 @@ class MpMncaConfig:
     # Gene expression dimension (3000 HVGs)
     gene_dim: int = 3000
 
+    # Spatial neighborhood size for cross-attention and contrastive graph
+    n_neighbors: int = 6
+
     # Cross-attention architecture (Phase 1)
     num_heads: int = 8
     attention_dropout: float = 0.1
@@ -55,6 +58,16 @@ class MpMncaConfig:
     image_pseudo_clusters: int = 40
     refinement_neighbors: int = 15
     n_clusters: int | None = None
+
+    # Intersection pseudo-label filtering: train only on spots whose gene-KMeans
+    # and image-KMeans cluster assignments agree (after Hungarian alignment).
+    # None disables filtering; an integer is the cluster count k for both views.
+    intersection_clusters: int | None = None
+
+    # Gene-expression KMeans pseudo-labels for the contrastive negative mask.
+    # None disables negative masking; an integer k runs KMeans on the 3000-d
+    # gene expression and masks same-cluster spots from the negatives.
+    gene_pseudo_clusters: int | None = None
 
     # Reproducibility
     seed: int = 0

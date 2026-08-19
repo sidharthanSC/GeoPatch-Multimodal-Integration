@@ -3,7 +3,11 @@
 Phase 1 shipped with ``adata.obs["ground_truth"]`` as its contrastive pseudo-labels.
 Those build the negative mask in ``staig/model.py``, so the loss never separated
 spots sharing a cortical layer -- supervised contrastive learning on the evaluation
-label. STAIG derives the same variable from ``KMeans(40)`` on image PCA.
+label.
+
+The fix adopted from SM/geopatch drops the pseudo-label mask entirely: positives are
+the same-spot diagonal plus spatial k-NN neighbours, and every other spot is a
+negative (``model.contrastive_loss``). No labels of any kind are involved.
 
 This runs both arms with *everything else identical* (seed, config, architecture,
 epochs) so the difference isolates the leak.
@@ -34,7 +38,15 @@ from .config import MpMncaConfig
 from .data import MpMncaSectionData
 
 RUN_ROOT = Path("outputs/mp_mnca/leak_ab_all12_v1")
-ARMS = ("ground_truth", "image_kmeans")
+
+# (arm label, pseudo_label_source passed to fit_phase1)
+#   "ground_truth" -> masked loss keyed on the cortical layer: the leak.
+#   None           -> the production unmasked objective (model.contrastive_loss).
+# NOTE: the committed results in this directory were produced when the unleaked arm
+# used STAIG-style KMeans-on-image pseudo-labels. The unleaked arm is now the
+# unmasked loss, so a re-run will not reproduce those exact numbers -- the leak's
+# existence and rough magnitude carry over, the absolute values do not.
+ARMS: tuple[tuple[str, str | None], ...] = (("ground_truth", "ground_truth"), ("unmasked", None))
 
 
 def prepare_cache(checkpoint_path: Path, run_dir: Path, config: MpMncaConfig) -> list[str]:
@@ -94,8 +106,8 @@ def run_sections(
         data = load_cached(run_dir, section_id)
         row: dict = {"section_id": section_id, "epochs": config.epochs, "seed": config.seed}
         started = time.perf_counter()
-        for arm in ARMS:
-            result = fit_phase1(data, config, device=device, pseudo_label_source=arm)
+        for arm, source in ARMS:
+            result = fit_phase1(data, config, device=device, pseudo_label_source=source)
             row[f"{arm}_ari"] = result.metrics["refined_ari"]
             row[f"{arm}_nmi"] = result.metrics["refined_nmi"]
             row[f"{arm}_ari_unrefined"] = result.metrics["ari"]
@@ -104,8 +116,8 @@ def run_sections(
                 f"refined_NMI={row[f'{arm}_nmi']:.4f}",
                 flush=True,
             )
-        row["ari_leak"] = row["ground_truth_ari"] - row["image_kmeans_ari"]
-        row["nmi_leak"] = row["ground_truth_nmi"] - row["image_kmeans_nmi"]
+        row["ari_leak"] = row["ground_truth_ari"] - row["unmasked_ari"]
+        row["nmi_leak"] = row["ground_truth_nmi"] - row["unmasked_nmi"]
         row["elapsed_seconds"] = time.perf_counter() - started
         rows.append(row)
         writer.append(row)
@@ -121,23 +133,35 @@ def summarize(run_dir: Path) -> dict:
     """
     import csv
 
+    merged = run_dir / "leak_ab_all_sections.csv"
     rows: list[dict] = []
     for path in sorted(run_dir.glob("leak_ab_*.csv")):
+        # Skip our own output: it matches the same glob, and re-reading it would
+        # double-count every section on the second invocation.
+        if path == merged:
+            continue
         with path.open(encoding="utf-8") as handle:
             rows.extend(dict(r) for r in csv.DictReader(handle))
     if not rows:
         raise FileNotFoundError(f"no worker CSVs under {run_dir}")
 
     rows.sort(key=lambda r: r["section_id"])
+
+    # The committed 12-section results predate the switch to the unmasked objective
+    # and name the unleaked arm "image_kmeans"; accept either so those CSVs -- the
+    # evidence results/mp_mnca_label_leak_correction.md cites -- stay readable.
+    clean_key = "unmasked_ari" if "unmasked_ari" in rows[0] else "image_kmeans_ari"
+    clean_nmi_key = clean_key.replace("_ari", "_nmi")
+
     numeric = lambda key: np.array([float(r[key]) for r in rows])  # noqa: E731
     ari_leak, nmi_leak = numeric("ari_leak"), numeric("nmi_leak")
-    leaked, clean = numeric("ground_truth_ari"), numeric("image_kmeans_ari")
+    leaked, clean = numeric("ground_truth_ari"), numeric(clean_key)
 
     summary = {
         "n_sections": len(rows),
         "sections": [r["section_id"] for r in rows],
         "ground_truth_ari": {"mean": float(leaked.mean()), "median": float(np.median(leaked))},
-        "image_kmeans_ari": {"mean": float(clean.mean()), "median": float(np.median(clean))},
+        clean_key: {"mean": float(clean.mean()), "median": float(np.median(clean))},
         "ari_leak": {
             "mean": float(ari_leak.mean()),
             "median": float(np.median(ari_leak)),
@@ -148,7 +172,6 @@ def summarize(run_dir: Path) -> dict:
         "nmi_leak": {"mean": float(nmi_leak.mean()), "median": float(np.median(nmi_leak))},
     }
 
-    merged = run_dir / "leak_ab_all_sections.csv"
     with merged.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=sorted({k for r in rows for k in r}))
         writer.writeheader()
@@ -160,7 +183,7 @@ def summarize(run_dir: Path) -> dict:
     for row in rows:
         print(
             f"{row['section_id']:>9} {float(row['ground_truth_ari']):>11.4f} "
-            f"{float(row['image_kmeans_ari']):>10.4f} {float(row['ari_leak']):>+9.4f} "
+            f"{float(row[clean_key]):>10.4f} {float(row['ari_leak']):>+9.4f} "
             f"{float(row['nmi_leak']):>+9.4f}"
         )
     print(

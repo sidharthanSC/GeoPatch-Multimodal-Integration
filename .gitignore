@@ -49,3 +49,4 @@ __MACOSX/
 # Editors
 .vscode/
 .idea/
+*.log

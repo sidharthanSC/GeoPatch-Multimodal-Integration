@@ -262,6 +262,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device")
     parser.add_argument("--epochs", type=int, default=400)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--hidden-dim", type=int, default=64)
+    parser.add_argument("--projection-dim", type=int, default=64)
     parser.add_argument("--temperature", type=float, default=10.0)
     parser.add_argument("--image-pseudo-clusters", type=int, default=40)
     parser.add_argument("--feature-mask-rate-1", type=float, default=0.1)
@@ -279,6 +281,8 @@ def main() -> None:
     config = StaigConfig(
         epochs=args.epochs,
         seed=args.seed,
+        hidden_dim=args.hidden_dim,
+        projection_dim=args.projection_dim,
         temperature=args.temperature,
         image_pseudo_clusters=args.image_pseudo_clusters,
         feature_mask_rate_1=args.feature_mask_rate_1,

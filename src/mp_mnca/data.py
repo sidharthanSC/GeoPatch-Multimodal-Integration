@@ -32,6 +32,63 @@ class MpMncaSectionData:
     neighbor_indices: np.ndarray  # (n_spots, n_neighbors) - indices into this section
     gene_mask: np.ndarray  # (n_spots, n_genes) - boolean mask for structured masking (optional)
     n_neighbors: int
+    train_mask: np.ndarray | None = None  # (n_spots,) bool; None = train on all spots
+    pseudo_labels: np.ndarray | None = None  # (n_spots,) gene-KMeans clusters for negative masking
+
+
+def gene_kmeans_pseudo_labels(
+    gene_features: np.ndarray,
+    n_clusters: int,
+    seed: int = 0,
+) -> np.ndarray:
+    """KMeans-cluster gene expression and return the cluster assignments.
+
+    These are the pseudo-labels used for the contrastive negative mask, so
+    that spots in the same gene-expression cluster are not treated as
+    negatives. Fully unsupervised (gene expression only, no ground truth).
+    """
+    from sklearn.cluster import KMeans
+
+    return KMeans(
+        n_clusters=n_clusters, random_state=seed, n_init=10
+    ).fit_predict(gene_features).astype(np.int64)
+
+
+def intersection_pseudo_mask(
+    gene_features: np.ndarray,
+    image_features: np.ndarray,
+    n_clusters: int,
+    seed: int = 0,
+) -> np.ndarray:
+    """Spots whose gene-KMeans and image-KMeans cluster assignments agree.
+
+    Clusters gene expression and image embeddings separately with KMeans
+    (same k, fixed seed), aligns the two cluster labelings with Hungarian
+    matching on the contingency table, and returns a boolean mask marking
+    spots whose aligned gene/image cluster IDs match. These are the spots to
+    train on; the complement is held out for evaluation only.
+    """
+    from scipy.optimize import linear_sum_assignment
+    from sklearn.cluster import KMeans
+
+    gene_clusters = KMeans(
+        n_clusters=n_clusters, random_state=seed, n_init=10
+    ).fit_predict(gene_features).astype(np.int64)
+
+    image_clusters = KMeans(
+        n_clusters=n_clusters, random_state=seed, n_init=10
+    ).fit_predict(image_features).astype(np.int64)
+
+    contingency = np.zeros((n_clusters, n_clusters), dtype=np.int64)
+    for g, im in zip(gene_clusters, image_clusters):
+        contingency[g, im] += 1
+
+    gene_row, image_col = linear_sum_assignment(-contingency)
+    image_to_gene = np.full(n_clusters, -1, dtype=np.int64)
+    image_to_gene[image_col] = gene_row
+
+    aligned = image_to_gene[image_clusters]
+    return aligned == gene_clusters
 
 
 def build_spatial_knn_graph(
@@ -91,6 +148,7 @@ def prepare_gene_expression(
     expected_hvg_count: int = 3000,
     use_feat_obsm: bool = True,
     use_pretrained_gene_emb: bool = False,
+    feat_subset_indices: np.ndarray | None = None,
 ) -> np.ndarray:
     """Extract gene expression or pre-trained gene embeddings from AnnData.
 
@@ -103,6 +161,9 @@ def prepare_gene_expression(
                        contain the raw expression matrix.
         use_pretrained_gene_emb: If True, use adata.obsm['gene_emb'] (128-d pre-trained BYOL embeddings)
                                  instead of raw HVG expression.
+        feat_subset_indices: Optional column indices into adata.obsm['feat'] to select
+                             a reduced HVG subset (e.g. top-300 by variance) when the
+                             requested gene_dim is smaller than the stored 3000.
 
     Returns:
         Gene expression matrix (n_spots, n_hvg) or gene embeddings (n_spots, 128) as float32.
@@ -117,6 +178,8 @@ def prepare_gene_expression(
 
     if use_feat_obsm and "feat" in adata.obsm:
         features = np.asarray(adata.obsm["feat"], dtype=np.float32)
+        if feat_subset_indices is not None:
+            features = features[:, feat_subset_indices]
         if features.shape[1] != expected_hvg_count:
             raise ValueError(f"Expected {expected_hvg_count} HVGs in obsm['feat'], found {features.shape[1]}")
         if not np.isfinite(features).all():

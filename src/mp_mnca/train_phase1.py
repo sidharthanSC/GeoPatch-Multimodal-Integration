@@ -15,10 +15,11 @@ import torch
 
 from src.datasets.dlpfc import DlpfcDataset
 from src.prior_models.staig.evaluate import clustering_metrics, refine_labels, tied_gmm
-from src.prior_models.staig.model import mask_features, neighbor_contrastive_loss
+from src.prior_models.staig.model import mask_features, normalized_adjacency
 
 from .config import MpMncaConfig
 from .data import MpMncaSectionData, prepare_image_features, prepare_section
+from .model import contrastive_loss, contrastive_loss_masked
 from .phase1 import Phase1Model, Phase1Output
 
 
@@ -48,13 +49,15 @@ def prepare_section_phase1(
     adata,
     section_id: str,
     config: MpMncaConfig,
-    n_neighbors: int = 6,
+    n_neighbors: int | None = None,
     image_key: str = "img_emb",
     hvg_key: str = "highly_variable",
     use_feat_obsm: bool = True,
 ) -> MpMncaSectionData:
     """Prepare section for Phase 1 (uses raw 3000-dim HVG expression)."""
     from .data import prepare_gene_expression
+    if n_neighbors is None:
+        n_neighbors = config.n_neighbors
     features = prepare_gene_expression(adata, hvg_key, config.gene_dim, use_feat_obsm)
 
     image_features = prepare_image_features(adata, config.image_pca_dim, image_key)
@@ -68,12 +71,9 @@ def prepare_section_phase1(
     _, indices = finder.kneighbors(coordinates)
     neighbor_indices = indices[:, 1:]
 
-    # Earlier revisions also built a STAIG edge index, image-guided edge-drop
-    # probabilities, and KMeans image pseudo-labels here, then dropped all three on
-    # the floor -- MpMncaSectionData has no field for any of them. The discarded
-    # pseudo-labels are the important one: they are exactly the unsupervised labels
-    # STAIG uses, and their absence is why fit_phase1 fell back to ground truth.
-    # fit_phase1 now derives them itself; see its pseudo_label_source argument.
+    # STAIG edge index for contrastive loss
+    edge_index = build_spatial_graph(coordinates, n_neighbors)
+    edge_probability = image_guided_edge_probabilities(edge_index, image_features)
 
     return MpMncaSectionData(
         section_id=section_id,
@@ -92,28 +92,46 @@ def fit_phase1(
     section_data: MpMncaSectionData,
     config: MpMncaConfig,
     device: torch.device | str | None = None,
-    pseudo_label_source: str = "image_kmeans",
+    pseudo_label_source: str | None = None,
 ) -> Phase1Result:
-    """Fit Phase 1 with STAIG-style contrastive loss on 3000-dim embeddings.
+    """Fit Phase 1 with a neighbour-contrastive loss on 3000-dim embeddings.
 
-    ``pseudo_label_source`` selects what defines the contrastive negative mask
-    (``staig/model.py`` excludes same-pseudo-label spots from the denominator):
+    The production objective is ``model.contrastive_loss`` -- no pseudo-label negative
+    mask at all. Positives are the same-spot diagonal and the spatial k-NN neighbours;
+    every other spot is a negative. No labels of any kind are involved.
 
-    - ``"image_kmeans"`` (default): KMeans over image PCA features, exactly as STAIG
-      derives its pseudo-labels. Fully unsupervised.
-    - ``"ground_truth"``: the ``ground_truth`` cortical layer. **This leaks the
-      evaluation label into training** -- the loss is never asked to separate two
-      spots that share a layer, making the objective supervised contrastive learning
-      on the metric being reported. It was the unconditional behavior of this
-      function when the 0.824 mean refined ARI figure in ``results/`` was produced,
-      so that figure is not comparable to STAIG's unsupervised 0.507. Retained only
-      so the leak can be measured against the corrected default.
+    ``pseudo_label_source`` exists only to reproduce the label-leak measurement and
+    defaults to ``None`` (the production objective above):
+
+    - ``None`` (default): unmasked loss. Fully unsupervised.
+    - ``"ground_truth"``: masks out same-cortical-layer spots from the negatives via
+      ``model.contrastive_loss_masked``. **This leaks the evaluation label into
+      training** and was this function's unconditional behaviour when the 0.824 mean
+      refined ARI in ``results/`` was produced, which is why that figure is not
+      comparable to STAIG's unsupervised 0.507. Kept solely so
+      ``src/mp_mnca/leak_ab.py`` can still quantify the leak; never use it to produce
+      a reported result. See ``results/mp_mnca_label_leak_correction.md``.
     """
     _set_seed(config.seed)
     device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     dtype = torch.float32 if config.dtype == "float32" else torch.float64
 
     n_spots = section_data.gene_expression.shape[0]
+
+    # Only populated for the leak-reproduction path; None means the unmasked
+    # production objective.
+    leaked_pseudo_labels = None
+    if pseudo_label_source == "ground_truth":
+        label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
+        leaked_pseudo_labels = torch.as_tensor(
+            np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64),
+            dtype=torch.long,
+            device=torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu")),
+        )
+    elif pseudo_label_source is not None:
+        raise ValueError(
+            f"pseudo_label_source must be None or 'ground_truth', got {pseudo_label_source!r}"
+        )
 
     model = Phase1Model(config)
     model = model.to(device=device, dtype=dtype)
@@ -138,22 +156,6 @@ def fit_phase1(
     # ~300 MB of dead weight -- enough to push parallel runs into swap.
     neighbor_images = center_image[neighbor_idx]
     neighbor_coords = center_coords[neighbor_idx]
-
-    # Pseudo labels -- see the docstring; only "image_kmeans" is label-free.
-    if pseudo_label_source == "image_kmeans":
-        from sklearn.cluster import KMeans
-
-        pseudo_numeric = (
-            KMeans(n_clusters=config.image_pseudo_clusters, random_state=0, n_init=10)
-            .fit_predict(section_data.image_features)
-            .astype(np.int64)
-        )
-    elif pseudo_label_source == "ground_truth":
-        label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
-        pseudo_numeric = np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64)
-    else:
-        raise ValueError(f"unknown pseudo_label_source: {pseudo_label_source!r}")
-    pseudo_labels = torch.as_tensor(pseudo_numeric, dtype=torch.long, device=device)
 
     # STAIG edge index
     src = np.repeat(np.arange(n_spots), section_data.neighbor_indices.shape[1])
@@ -227,8 +229,13 @@ def fit_phase1(
                 all_emb_2.append(out.spot_embeddings)
             z2 = torch.cat(all_emb_2, dim=0)
 
-            # Contrastive loss on full graph
-            loss = neighbor_contrastive_loss(z1, z2, edge_index, pseudo_labels, config.temperature)
+            # Contrastive loss on full graph (no pseudo-label mask)
+            if leaked_pseudo_labels is None:
+                loss = contrastive_loss(z1, z2, edge_index, config.temperature)
+            else:
+                loss = contrastive_loss_masked(
+                    z1, z2, edge_index, leaked_pseudo_labels, config.temperature
+                )
 
             loss.backward()
             optimizer.step()
