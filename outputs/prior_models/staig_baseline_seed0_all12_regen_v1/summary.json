@@ -1,0 +1,67 @@
+{
+  "run_id": "staig_baseline_seed0_all12_regen_v1",
+  "implementation": "repository-local STAIG adaptation",
+  "input_image_key": "img_emb",
+  "node_feature_source": "section_hvg_expression",
+  "image_feature_source": "img_emb",
+  "config": {
+    "n_neighbors": 5,
+    "hidden_dim": 64,
+    "projection_dim": 64,
+    "n_layers": 1,
+    "temperature": 10.0,
+    "epochs": 400,
+    "learning_rate": 0.0005,
+    "weight_decay": 1e-05,
+    "feature_mask_rate_1": 0.1,
+    "feature_mask_rate_2": 0.1,
+    "image_pseudo_clusters": 40,
+    "image_pca_dim": 16,
+    "refinement_neighbors": 15,
+    "seed": 0,
+    "dtype": "float32"
+  },
+  "sections": [
+    "151507",
+    "151508",
+    "151509",
+    "151510",
+    "151669",
+    "151670",
+    "151671",
+    "151672",
+    "151673",
+    "151674",
+    "151675",
+    "151676"
+  ],
+  "n_sections": 12,
+  "metrics": {
+    "ari": {
+      "mean": 0.5058209096298508,
+      "median": 0.5357783606540174,
+      "iqr": 0.06517001436990627
+    },
+    "nmi": {
+      "mean": 0.6419233540029239,
+      "median": 0.6720869790334376,
+      "iqr": 0.07015534222855968
+    },
+    "refined_ari": {
+      "mean": 0.5092058911668258,
+      "median": 0.5373999220673886,
+      "iqr": 0.06559424598165431
+    },
+    "refined_nmi": {
+      "mean": 0.6455014589225619,
+      "median": 0.6750655874710316,
+      "iqr": 0.06593673772069153
+    }
+  },
+  "deviations": [
+    "Uses fixed repository img_emb instead of STAIG filtered-patch BYOL embeddings.",
+    "Uses sklearn tied-covariance GMM as the R mclust EEE analogue.",
+    "Uses float32; the official implementation casts the model and inputs to float64.",
+    "Uses seed 0; the paper supplement does not declare one DLPFC seed, while the released 151673 notebook uses 39788."
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "n_spots": 47329,
+  "sqrt_n_spots": 217.55229256433958,
+  "k_values": [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13,
+    15,
+    17,
+    19,
+    21,
+    23,
+    25,
+    27,
+    29,
+    31,
+    33,
+    35,
+    37,
+    39,
+    41,
+    43,
+    45,
+    47,
+    49,
+    51,
+    61,
+    71,
+    91,
+    121,
+    151,
+    181,
+    218,
+    252
+  ],
+  "method": "max distance from the (k, error) curve's endpoint chord, on the raw-embedding curve",
+  "selected_k": 91,
+  "raw_accuracy_at_selected_k": 0.5637135794121997,
+  "runs_swept": {
+    "layer_projector_e200": {
+      "projected_accuracy_at_selected_k": 0.6517357222844344,
+      "best_k_for_this_run": 45,
+      "accuracy_at_best_k_for_this_run": 0.6561727482093431
+    },
+    "layer_projector_e_200_pw_5": {
+      "projected_accuracy_at_selected_k": 0.6600392993724777,
+      "best_k_for_this_run": 51,
+      "accuracy_at_best_k_for_this_run": 0.6614126645397114
+    },
+    "layer_projector": {
+      "projected_accuracy_at_selected_k": 0.6919224999471782,
+      "best_k_for_this_run": 33,
+      "accuracy_at_best_k_for_this_run": 0.6931268355553677
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "embeddings_npz": "outputs/predictions/layer_projector_embeddings.npz",
+  "checkpoint_path": "checkpoints/dlpfc.pkl",
+  "k": 49,
+  "n_spots": 47329,
+  "accuracy_raw": 0.5943501869889497,
+  "accuracy_projected": 0.6935705381478586,
+  "n_changed": 17246,
+  "pct_changed": 0.3643854719094002,
+  "category_counts": {
+    "improved": 9038,
+    "regressed": 4342,
+    "still_wrong_different_label": 3866,
+    "unchanged": 30083
+  }
+}

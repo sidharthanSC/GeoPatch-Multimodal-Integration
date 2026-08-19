@@ -1,0 +1,9 @@
+[
+  {
+    "section": "151507",
+    "ground_truth_ari": 0.8591177774971377,
+    "ground_truth_nmi": 0.8608048870285937,
+    "image_kmeans_ari": 0.5213948641648309,
+    "image_kmeans_nmi": 0.6647090367116839
+  }
+]

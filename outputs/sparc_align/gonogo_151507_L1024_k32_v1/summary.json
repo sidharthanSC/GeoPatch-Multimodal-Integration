@@ -1,0 +1,77 @@
+{
+  "run_id": "gonogo_151507_L1024_k32_v1",
+  "implementation": "SPARC Global TopK cross-modal SAE (gene 3000-d + image 128-d)",
+  "config": {
+    "gene_dim": 3000,
+    "image_dim": 128,
+    "standardize_streams": true,
+    "n_latents": 1024,
+    "k_active": 32,
+    "global_topk": true,
+    "cross_loss_weight": 1.0,
+    "aux_k": 32,
+    "aux_loss_weight": 0.03125,
+    "dead_steps_threshold": 200,
+    "dead_activation_threshold": 0.001,
+    "dead_reinit_std": 0.01,
+    "epochs": 50,
+    "batch_size": 256,
+    "learning_rate": 0.0001,
+    "adam_betas": [
+      0.9,
+      0.999
+    ],
+    "adam_eps": 1e-08,
+    "dtype": "float32",
+    "seed": 42,
+    "cluster_input": "sum",
+    "pca_dim": 128,
+    "n_clusters": null,
+    "refinement_neighbors": 15,
+    "gmm_seed": 2023,
+    "use_cross_attention_stage": false,
+    "n_neighbors": 6,
+    "num_heads": 8,
+    "image_pca_dim": 16,
+    "image_pseudo_clusters": 40,
+    "temperature": 10.0,
+    "mask_rate": 0.1,
+    "attention_epochs": 20
+  },
+  "sections": [
+    "151507"
+  ],
+  "n_sections": 1,
+  "metrics": {
+    "ari": {
+      "mean": 0.01995119872971081,
+      "median": 0.01995119872971081,
+      "iqr": 0.0
+    },
+    "nmi": {
+      "mean": 0.08676637041835318,
+      "median": 0.08676637041835318,
+      "iqr": 0.0
+    },
+    "refined_ari": {
+      "mean": 0.0165861400786337,
+      "median": 0.0165861400786337,
+      "iqr": 0.0
+    },
+    "refined_nmi": {
+      "mean": 0.1098703229464503,
+      "median": 0.1098703229464503,
+      "iqr": 0.0
+    },
+    "self_nmse_mean": {
+      "mean": 0.5884824973695418,
+      "median": 0.5884824973695418,
+      "iqr": 0.0
+    },
+    "cross_nmse_mean": {
+      "mean": 0.5894386917352676,
+      "median": 0.5894386917352676,
+      "iqr": 0.0
+    }
+  }
+}

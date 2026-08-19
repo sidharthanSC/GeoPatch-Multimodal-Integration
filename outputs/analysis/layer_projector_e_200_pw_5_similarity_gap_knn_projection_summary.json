@@ -1,0 +1,16 @@
+{
+  "embeddings_npz": "outputs/predictions/layer_projector_e_200_pw_5_similarity_gap_embeddings.npz",
+  "checkpoint_path": "checkpoints/dlpfc.pkl",
+  "k": 49,
+  "n_spots": 47329,
+  "accuracy_raw": 0.5943501869889497,
+  "accuracy_projected": 0.7845295696084853,
+  "n_changed": 18422,
+  "pct_changed": 0.3892328170888884,
+  "category_counts": {
+    "improved": 12241,
+    "regressed": 3240,
+    "still_wrong_different_label": 2941,
+    "unchanged": 28907
+  }
+}

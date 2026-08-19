@@ -1,0 +1,17 @@
+{
+  "n_neighbors": 5,
+  "hidden_dim": 64,
+  "projection_dim": 64,
+  "n_layers": 1,
+  "temperature": 10.0,
+  "epochs": 400,
+  "learning_rate": 0.0005,
+  "weight_decay": 1e-05,
+  "feature_mask_rate_1": 0.1,
+  "feature_mask_rate_2": 0.1,
+  "image_pseudo_clusters": 40,
+  "image_pca_dim": 16,
+  "refinement_neighbors": 15,
+  "seed": 0,
+  "dtype": "float32"
+}

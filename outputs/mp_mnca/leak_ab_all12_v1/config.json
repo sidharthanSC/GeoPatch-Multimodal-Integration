@@ -1,0 +1,58 @@
+{
+  "config": {
+    "gene_dim": 3000,
+    "num_heads": 8,
+    "attention_dropout": 0.1,
+    "use_relative_position_bias": true,
+    "relative_position_dim": 16,
+    "image_embedding_dim": 128,
+    "image_pca_dim": 16,
+    "morphology_prior_type": "cosine",
+    "morphology_prior_weight": 1.0,
+    "position_bias_weight": 0.5,
+    "learn_morphology_weight": true,
+    "learn_position_weight": true,
+    "phase1_hidden_dim": 3000,
+    "byol_hidden_dims": [
+      3000,
+      3000
+    ],
+    "byol_projection_dim": 3000,
+    "byol_projection_hidden_dim": 3000,
+    "byol_predictor_hidden_dim": 3000,
+    "byol_ema_decay": 0.996,
+    "byol_mask_rate": 0.3,
+    "byol_noise_std": 0.05,
+    "gene_activation": "gelu",
+    "gene_dropout": 0.1,
+    "epochs": 20,
+    "batch_size": 256,
+    "learning_rate": 0.0003,
+    "weight_decay": 1e-05,
+    "temperature": 10.0,
+    "dtype": "float32",
+    "mask_rate": 0.1,
+    "image_pseudo_clusters": 40,
+    "refinement_neighbors": 15,
+    "n_clusters": null,
+    "seed": 0
+  },
+  "sections": [
+    "151507",
+    "151508",
+    "151509",
+    "151510",
+    "151669",
+    "151670",
+    "151671",
+    "151672",
+    "151673",
+    "151674",
+    "151675",
+    "151676"
+  ],
+  "arms": [
+    "ground_truth",
+    "image_kmeans"
+  ]
+}
