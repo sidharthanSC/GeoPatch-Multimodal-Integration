@@ -45,20 +45,22 @@ their artifacts are verified; a planned run is not a completed artifact.
 | `20260815_rich_gene_all33538_aligned_direct_v1` | canonical aligned clustering | `direct_clustering.parquet`, `summary.json`, `config.json` | median refined ARI/NMI: concat 0.45084/0.59663, bisector 0.40034/0.58032 |
 | `20260815_adjacency_clustering_seed0_v1` | verified graph-only sensitivity | `summary.json`, `section_metrics.csv`, 36 sparse adjacency matrices, 36 assignment files | median refined ARI: spatial binary 0.19285, all-gene weighted 0.19298, image weighted 0.20916; all remain below Expression STAIG 0.51821 |
 | `20260815_supervised_multiphase_study_v1` | verified conference-style supervised multimodal classification | `outputs/evaluation/20260815_supervised_study_aggregate_v1/`, `observations/SUPERVISED_MULTIPHASE_RESULTS.md` | regime‑wise balanced accuracy: LODO 0.2146 (CI 0.2036–0.2256), LOSO 0.2371 (0.2230–0.2512), within‑donor random 0.5165 (0.4680–0.5651), pooled random 0.4563 (0.4117–0.5008); primary LODO balanced‑accuracy 0.2146; does not beat raw gene; GCN strongest grouped‑transfer model at 0.309; see report for per‑method, per‑layer, spectral, and ablation tables. |
-| `20260816_mp_mnca_phase1_all12` | **verified MP-MNCA Phase 1 (3000-dim cross-attention) — BREAKTHROUGH** | `outputs/mp_mnca/phase1_all12/`, `outputs/mp_mnca/phase1_all12_remaining/` | **20 epochs, all 12 sections, mean refined ARI 0.824, median 0.896; DESTROYS STAIG (0.518 median) — 10/12 sections win, 20× faster** |
+| `20260816_mp_mnca_phase1_all12` | ⚠️ **RETRACTED 2026-08-18 — LABEL-LEAKED, NOT A VALID RESULT** | artifacts **missing** (`outputs/mp_mnca/` absent) | Reported mean refined ARI 0.824 / median 0.896 was produced with `adata.obs["ground_truth"]` as the contrastive pseudo-labels, which build the negative mask — supervised training on the evaluation label. 12-section A/B (`leak_ab_all12_v1`): leaked **0.7451** mean → unsupervised **0.4836**, vs STAIG **0.5092**. Mean leak **+0.2615**. "DESTROYS STAIG" and "10/12 sections win" are withdrawn — unsupervised wins **5/12**. See `results/mp_mnca_label_leak_correction.md` |
+| `leak_ab_all12_v1` | **verified 12-section label-leak A/B (2026-08-19)** | `outputs/mp_mnca/leak_ab_all12_v1/{leak_ab_all_sections.csv,summary.json,prepared/}` | Both arms per section, identical seed/config/epochs, only `pseudo_label_source` differs. Leak mean **+0.2615** ARI, median +0.3327, range [−0.2294, +0.4283], positive on 11/12. Negative on 151675 (−0.2294): removing same-layer negatives can starve the contrastive objective, so the leak is not purely additive. Absolute values are thread-config sensitive (`OMP_NUM_THREADS=4`); the within-run delta is the sound quantity |
 | `20260816_mp_mnca_phase2_v1` | verified MP-MNCA Phase 2 (BYOL 3000→3000 reconstruction) | `outputs/mp_mnca/phase2_v1/` | 50 epochs, section 151507, refined ARI 0.278; reconstruction objective, weaker than contrastive |
 | `20260816_mp_mnca_contrastive_v1` | verified MP-MNCA contrastive (50 ep, 1 section) | `outputs/mp_mnca/contrastive_v1/` | 50 epochs, section 151507, refined ARI 0.228; contrastive loss works |
 | `20260816_mp_mnca_contrastive_v2` | verified MP-MNCA contrastive (100 ep, 4 sections) | `outputs/mp_mnca/contrastive_v2/` | 100 epochs, donor 1 sections, mean refined ARI 0.311; contrastive beats latent pred |
 | `20260816_mp_mnca_contrastive_v3` | verified MP-MNCA contrastive (200 ep, 12 sections) | `outputs/mp_mnca/contrastive_v3/` | 200 epochs, all 12 sections, mean refined ARI 0.272, median 0.222; beats STAIG on 2 donor-2 sections |
 | `20260816_mp_mnca_gene_cosine_v2` | verified MP-MNCA gene-cosine prior (200 ep, 12 sections) | `outputs/mp_mnca/gene_cosine_v2/` | 200 epochs, all 12 sections, mean refined ARI 0.243, median 0.222; gene_cosine similar to image_cosine |
 | `20260816_mp_mnca_byol_v1` | verified MP-MNCA BYOL encoder (50 ep, 1 section) | `outputs/mp_mnca/byol_v1/` | 50 epochs, section 151507, refined ARI 0.234; random BYOL encoder, needs pre-training |
-| `20260816_mp_mnca_report` | MP-MNCA vs STAIG comparison report | `results/mp_mnca_vs_staig.md` | Full comparison: **Phase 1 (3000-dim) destroys STAIG (0.824 vs 0.507 mean ARI), latent pred fails, 128-d variants fail** |
+| `20260816_mp_mnca_report` | ⚠️ **RETRACTED 2026-08-18** — MP-MNCA vs STAIG comparison report | `results/mp_mnca_vs_staig.md` (banner added), `results/mp_mnca_label_leak_correction.md` | The "0.824 vs 0.507" comparison was supervised-vs-unsupervised and is withdrawn. The negative findings in the same report (latent prediction fails, 128-d variants fail) are unaffected — those arms scored 0.23–0.31 and were below STAIG regardless |
 
 ## Prior-model runs
 
 | run | status | artifacts | result |
 |---|---|---|---|
-| `staig_paper_default_img_emb_seed0_all12_v3` | canonical adaptation | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 400-epoch models; mean/median refined ARI 0.50693/0.51821, NMI 0.64353/0.67427 |
+| `staig_paper_default_img_emb_seed0_all12_v3` | canonical adaptation | **artifacts missing as of 2026-08-18** (`outputs/prior_models/` was absent; regenerated as the row below) | 12 independent 400-epoch models; mean/median refined ARI 0.50693/0.51821, NMI 0.64353/0.67427 |
+| `staig_baseline_seed0_all12_regen_v1` | **regenerated canonical STAIG baseline (2026-08-18)** | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | Same command/config as the row above (400 epochs, seed 0, temp 10.0, 40 pseudo-clusters). Mean/median refined ARI **0.50920/0.53740**, NMI **0.64550/0.67507** — closely reproduces the original. This is the live comparison bar for all `outputs/sparc_align/` runs |
 | `spagcn_paper_default_seed100_all12_v1` | canonical SpaGCN reproduction | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 200-epoch GCN-DEC models; mean/median refined ARI 0.49711/0.48623, NMI 0.64393/0.63790; native DEC-refined mean/median ARI 0.425/0.412 |
 | `graphst_paper_default_seed41_all12_v1` | canonical GraphST reproduction | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 600-epoch models; mean/median refined ARI 0.53238/0.52823, NMI 0.66317/0.65690; highest of the three reproduced published models |
 | `mucost_paper_default_seed2023_all12_v1` | canonical MuCoST reproduction | `outputs/prior_models/<run>/{config.json,summary.json,section_metrics.csv,checkpoints/,embeddings/}` | 12 independent 1000-epoch models; mean/median refined ARI 0.52209/0.51859, NMI 0.65395/0.67062; native 25-neighbor refinement mean/median ARI 0.52472/0.52217 |
@@ -80,6 +82,30 @@ Runs `staig_paper_default_img_emb_seed0_151673_v1`, `staig_paper_default_img_emb
 `staig_multistage_gene128_img_emb_seed0_all12_v1` is an invalid partial run: section 151507 training completed, but float32 tied-GMM covariance fitting failed before artifacts were saved. The corrected `_v2` run fits the same tied-GMM protocol in float64 for numerical stability.
 
 `outputs/evaluation/20260815_multiscale_gene_staig_controls_seed0_v1/` is superseded: its summary pooled refined and unrefined clustering rows, and several `saga` probes reached their iteration limit. Corrected `_v2` separates refinement and uses convergent matched `lbfgs` probes.
+
+## SPARC cross-modal alignment runs (`outputs/sparc_align/`)
+
+SPARC (Nasiri-Sarvi et al., TMLR 3/2026) Global-TopK concept-aligned sparse
+autoencoder over the DLPFC gene (3000-d `obsm['feat']`) and histology (128-d
+`img_emb`) streams. Code `src/sparc_align/`. All runs unsupervised (contrastive
+pseudo-labels from `KMeans(40)` on image PCA, never `ground_truth`). Evaluated
+through the identical protocol as `src/mp_mnca` and STAIG. Full index and findings:
+`outputs/sparc_align/README.md`.
+
+| Run | Status | Artifacts | Result |
+|---|---|---|---|
+| `ablation_all12_v1` | verified 5-arm × 12-section ablation | `ablation_metrics.csv` (60 rows), `summary.json` | Best arm `e_spatial_plus_attention` mean/median refined ARI **0.3629/0.3411**, NMI 0.4780. Paper-faithful SPARC 0.2662. Spatially-aggregated TopK is the largest gain (+0.072 median) |
+| `ablation_all12_v2_capacity` | verified 5-arm × 12-section capacity ablation | `ablation_metrics.csv` (60 rows), `summary.json` | Best `i_partitioned_mlp1024` **0.3163/0.3141**. No arm beat v1. Wider encoders *worsened* gene self-NMSE (0.924/0.929 vs affine 0.881) |
+| `ablation_all12_v3_attention` | verified 4-arm × 12-section attention-weighting ablation | `ablation_metrics.csv` (48 rows), `summary.json` | Morphology-kernel `softmax(β log s_ij)` neighbour weighting replaces the uniform mean. **Best overall SPARC arm: `n_spatial_attention_plus_stage2` 0.3740/0.3681 ARI, 0.4823 NMI.** Beats the uniform-mean equivalents (+0.0163 for `k`, +0.0111 for `n`) — contradicting the single-section 151507 prediction of a large drop |
+| `gonogo_151507_L1024_k32_v1` | feasibility probe, 1 section | `section_metrics.csv`, `summary.json`, latents, checkpoint | refined ARI 0.0166; established that cross-NMSE image→gene sits at 0.91 |
+| `exploratory_151507` | single-section sweeps + leak A/B | sweep scripts, `leak_test.json` | Superseded by `src/sparc_align/sweeps.py`; retained as provenance |
+| — | consolidated comparison | `CONSOLIDATED_12SECTION.csv` | All 10 SPARC arms + STAIG, mean/median ARI & NMI |
+
+**Headline:** SPARC does not beat STAIG — best arm 0.3740 vs STAIG's 0.5092 and
+unsupervised MP-MNCA's 0.4836 mean refined ARI. `cross_nmse_image_to_gene` never
+moved below 0.92 in any of the 14 arms: morphology cannot predict expression in this
+tissue, so the shared concept space is largely an image code while cortical layer
+lives in the gene channel. Reported as a negative result.
 
 ## Gene BYOL GBSSA preparation
 

@@ -1,3 +1,20 @@
+> # ⚠️ RETRACTED — 2026-08-18
+>
+> **The headline result in this document is label-leaked and its central claim is
+> withdrawn.** `train_phase1.py` fed `adata.obs["ground_truth"]` in as the contrastive
+> pseudo-labels, which build the negative mask, so the loss never separated spots
+> sharing a cortical layer. This was supervised contrastive learning on the
+> evaluation label, compared against unsupervised STAIG.
+>
+> Controlled A/B across all 12 sections (only the pseudo-label source differs):
+> **leaked 0.7451 mean ARI → unsupervised 0.4836**, against STAIG's **0.5092**.
+> Mean leak **+0.2615** across 12 sections; removed, MP-MNCA does not beat STAIG
+> and wins only 5/12 sections.
+>
+> Every "MP-MNCA wins" / "significantly outperforms" statement below is void.
+> Full evidence: **[`mp_mnca_label_leak_correction.md`](mp_mnca_label_leak_correction.md)**.
+> Retained unedited below for provenance.
+
 # MP-MNCA vs STAIG: Complete Results Comparison (Corrected)
 
 ## Executive Summary

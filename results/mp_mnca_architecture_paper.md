@@ -1,3 +1,25 @@
+> # ⚠️ RESULTS RETRACTED — 2026-08-18
+>
+> **Parts VII-IX are label-leaked and withdrawn.** The training objective this report
+> describes used `adata.obs["ground_truth"]` as its contrastive pseudo-labels, which
+> build the negative mask — so the loss never separated same-layer spots. 12-section
+> A/B: **0.7451 → 0.4836 mean ARI** once pseudo-labels come from image KMeans as
+> STAIG does; STAIG scores **0.5092**. Mean leak **+0.2615**.
+>
+> Consequently the architectural arguments in Part VIII (§8.1 "no bottleneck",
+> "adaptive aggregation", "continuous morphology prior") are **not supported** — the
+> reported numbers are explained by the leak, not the architecture.
+>
+> Two further inaccuracies in the architecture description itself:
+> - §4.1/§5.1 imply a "frozen pre-trained gene encoder"; `Phase1Model` contains only
+>   `GeneExpressionCrossAttention` — there is no gene encoder.
+> - §5.1's edge-augmentation step is dead code: `edges_*`/`adjacency_*` are computed
+>   every step and never reach the loss.
+>
+> Full evidence: **[`mp_mnca_label_leak_correction.md`](mp_mnca_label_leak_correction.md)**.
+> Parts I-VI (mathematical architecture, data prep, evaluation protocol) remain
+> accurate. Retained unedited below for provenance.
+
 # MP-MNCA: Morphology-Prior Masked Neighbour Cross-Attention for Spatial Domain Identification in DLPFC
 
 **A conference-style technical report with complete mathematical architecture, training protocol, evaluation protocol, and results**

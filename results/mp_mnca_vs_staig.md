@@ -1,3 +1,17 @@
+> # ⚠️ RETRACTED — 2026-08-18
+>
+> **The Phase 1 "breakthrough" is label-leaked.** `train_phase1.py` used
+> `adata.obs["ground_truth"]` as the contrastive pseudo-labels, which build the
+> negative mask — so same-layer spots were never pushed apart. Supervised training,
+> compared against unsupervised STAIG.
+>
+> 12-section A/B: leaked **0.7451** mean ARI → unsupervised **0.4836**, vs STAIG
+> **0.5092**. Mean leak **+0.2615** (median +0.3327, positive on 11/12). Unsupervised
+> MP-MNCA does not beat STAIG and wins only 5/12 sections.
+>
+> Full evidence: **[`mp_mnca_label_leak_correction.md`](mp_mnca_label_leak_correction.md)**.
+> Retained unedited below for provenance.
+
 # MP-MNCA vs. STAIG: Comprehensive Comparison — INCLUDING BREAKTHROUGH PHASE 1 (3000-dim)
 
 **Report generated:** 2026-08-16  

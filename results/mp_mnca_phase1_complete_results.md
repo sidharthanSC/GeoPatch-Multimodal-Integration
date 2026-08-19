@@ -1,3 +1,18 @@
+> # ⚠️ RETRACTED — 2026-08-18
+>
+> **Every number in this document is label-leaked.** Phase 1 used
+> `adata.obs["ground_truth"]` as its contrastive pseudo-labels, which build the
+> negative mask, so same-layer spots were never treated as negatives — supervised
+> training on the evaluation label.
+>
+> 12-section A/B: leaked **0.7451** mean ARI → unsupervised **0.4836**, vs STAIG
+> **0.5092**. Mean leak **+0.2615**. The tables below are not comparable to any
+> unsupervised baseline; the unsupervised equivalent wins 5/12 sections, not 10/12. The cited artifacts (`outputs/mp_mnca/phase1_all12*`) no
+> longer exist, so the tables cannot be re-derived.
+>
+> Full evidence: **[`mp_mnca_label_leak_correction.md`](mp_mnca_label_leak_correction.md)**.
+> Retained unedited below for provenance.
+
 # MP-MNCA Phase 1: Gene Expression Cross-Attention (3000-dim) — COMPLETE 12-SECTION RESULTS
 
 **Report generated:** 2026-08-16  
