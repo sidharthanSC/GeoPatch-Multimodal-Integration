@@ -1,0 +1,44 @@
+151507 epoch=001 loss=8.795116
+151507 epoch=020 loss=8.720353
+  151507 ground_truth   refined_ARI=0.9291 refined_NMI=0.9089
+151507 epoch=001 loss=8.958298
+151507 epoch=020 loss=8.897808
+  151507 image_kmeans   refined_ARI=0.5245 refined_NMI=0.6623
+{"ari_leak": 0.40458449029170573, "elapsed_seconds": 6280.0403386250255, "epochs": 20, "ground_truth_ari": 0.9291169085038505, "ground_truth_ari_unrefined": 0.9536973060498808, "ground_truth_nmi": 0.9089200671863458, "image_kmeans_ari": 0.5245324182121448, "image_kmeans_ari_unrefined": 0.527275777955551, "image_kmeans_nmi": 0.6623388609204193, "nmi_leak": 0.2465812062659265, "section_id": "151507", "seed": 0}
+151508 epoch=001 loss=8.808275
+151508 epoch=020 loss=8.732317
+  151508 ground_truth   refined_ARI=0.9185 refined_NMI=0.8934
+151508 epoch=001 loss=8.993577
+151508 epoch=020 loss=8.934492
+  151508 image_kmeans   refined_ARI=0.4902 refined_NMI=0.6277
+{"ari_leak": 0.42832250861021665, "elapsed_seconds": 8247.253918584029, "epochs": 20, "ground_truth_ari": 0.9185019302433862, "ground_truth_ari_unrefined": 0.9326350135767261, "ground_truth_nmi": 0.8933677156031651, "image_kmeans_ari": 0.4901794216331696, "image_kmeans_ari_unrefined": 0.4873294126132043, "image_kmeans_nmi": 0.6277249489720376, "nmi_leak": 0.2656427666311275, "section_id": "151508", "seed": 0}
+151509 epoch=001 loss=8.803147
+151509 epoch=020 loss=8.742431
+  151509 ground_truth   refined_ARI=0.4497 refined_NMI=0.4703
+151509 epoch=001 loss=9.062101
+151509 epoch=020 loss=9.011623
+  151509 image_kmeans   refined_ARI=0.4323 refined_NMI=0.6287
+{"ari_leak": 0.0174271131634936, "elapsed_seconds": 9423.391027875012, "epochs": 20, "ground_truth_ari": 0.4496880270634746, "ground_truth_ari_unrefined": 0.4514201273790994, "ground_truth_nmi": 0.4703448164687512, "image_kmeans_ari": 0.432260913899981, "image_kmeans_ari_unrefined": 0.4305399311891835, "image_kmeans_nmi": 0.6286575535030879, "nmi_leak": -0.15831273703433674, "section_id": "151509", "seed": 0}
+151510 epoch=001 loss=8.771379
+151510 epoch=020 loss=8.695599
+  151510 ground_truth   refined_ARI=0.8753 refined_NMI=0.8294
+151510 epoch=001 loss=9.037702
+151510 epoch=020 loss=8.981343
+  151510 image_kmeans   refined_ARI=0.4937 refined_NMI=0.6433
+{"ari_leak": 0.3815631654552199, "elapsed_seconds": 7085.271919333958, "epochs": 20, "ground_truth_ari": 0.8752509963832598, "ground_truth_ari_unrefined": 0.9291163200045606, "ground_truth_nmi": 0.8293851736294976, "image_kmeans_ari": 0.49368783092803986, "image_kmeans_ari_unrefined": 0.48840857514878483, "image_kmeans_nmi": 0.6433125516768984, "nmi_leak": 0.18607262195259922, "section_id": "151510", "seed": 0}
+151669 epoch=001 loss=8.274302
+151669 epoch=020 loss=8.153215
+  151669 ground_truth   refined_ARI=0.6453 refined_NMI=0.6318
+151669 epoch=001 loss=8.795236
+151669 epoch=020 loss=8.725573
+  151669 image_kmeans   refined_ARI=0.3023 refined_NMI=0.5149
+{"ari_leak": 0.3429848304781795, "elapsed_seconds": 2322.540587583906, "epochs": 20, "ground_truth_ari": 0.645329680372696, "ground_truth_ari_unrefined": 0.6199024779164443, "ground_truth_nmi": 0.6317988958847685, "image_kmeans_ari": 0.3023448498945165, "image_kmeans_ari_unrefined": 0.3002074165825926, "image_kmeans_nmi": 0.5149248423676203, "nmi_leak": 0.11687405351714819, "section_id": "151669", "seed": 0}
+151670 epoch=001 loss=8.148544
+151670 epoch=020 loss=8.018720
+  151670 ground_truth   refined_ARI=0.6936 refined_NMI=0.6479
+151670 epoch=001 loss=8.757733
+151670 epoch=020 loss=8.686779
+  151670 image_kmeans   refined_ARI=0.2922 refined_NMI=0.4777
+{"ari_leak": 0.40144536694216576, "elapsed_seconds": 2045.8561133749317, "epochs": 20, "ground_truth_ari": 0.6936210951909739, "ground_truth_ari_unrefined": 0.6525070772075803, "ground_truth_nmi": 0.6478716897288304, "image_kmeans_ari": 0.29217572824880816, "image_kmeans_ari_unrefined": 0.2817160360667029, "image_kmeans_nmi": 0.4777469123277512, "nmi_leak": 0.17012477740107917, "section_id": "151670", "seed": 0}
+
+w1: mean ARI leak +0.3294 median +0.3915 over 6 sections

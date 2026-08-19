@@ -1,0 +1,189 @@
+/Users/sidharthansc/Documents/Sidharthan/GeoPatch/src/prior_models/staig/model.py:19: UserWarning: Sparse invariant checks are implicitly disabled. Memory errors (e.g. SEGFAULT) will occur when operating on a sparse tensor which violates the invariants, but checks incur performance overhead. To silence this warning, explicitly opt in or out. See `torch.sparse.check_sparse_tensor_invariants.__doc__` for guidance.  (Triggered internally at /Users/runner/work/pytorch/pytorch/aten/src/ATen/Context.cpp:823.)
+  adjacency = torch.sparse_coo_tensor(indices, values, (n_nodes, n_nodes)).coalesce()
+151507 epoch=001 loss=8.983385
+151507 epoch=050 loss=8.921121
+151507 epoch=100 loss=8.900846
+151507 epoch=150 loss=8.900390
+151507 epoch=200 loss=8.898588
+151507 epoch=250 loss=8.899207
+151507 epoch=300 loss=8.897762
+151507 epoch=350 loss=8.897610
+151507 epoch=400 loss=8.898088
+{"ari": 0.5443161362055863, "elapsed_seconds": 64.36423508299049, "final_loss": 8.898088455200195, "n_clusters": 7, "n_spots": 4221, "nmi": 0.6720409338393252, "refined_ari": 0.5523883368395042, "refined_nmi": 0.6798698341378712, "section_id": "151507"}
+151508 epoch=001 loss=9.017101
+151508 epoch=050 loss=8.953667
+151508 epoch=100 loss=8.938816
+151508 epoch=150 loss=8.936186
+151508 epoch=200 loss=8.935364
+151508 epoch=250 loss=8.934707
+151508 epoch=300 loss=8.934352
+151508 epoch=350 loss=8.935013
+151508 epoch=400 loss=8.934690
+{"ari": 0.47732272231888795, "elapsed_seconds": 69.59423179196892, "final_loss": 8.93468952178955, "n_clusters": 7, "n_spots": 4381, "nmi": 0.6182393824181526, "refined_ari": 0.48153641610276887, "refined_nmi": 0.624877466027164, "section_id": "151508"}
+151509 epoch=001 loss=9.094112
+151509 epoch=050 loss=9.030465
+151509 epoch=100 loss=9.019009
+151509 epoch=150 loss=9.015204
+151509 epoch=200 loss=9.013171
+151509 epoch=250 loss=9.012940
+151509 epoch=300 loss=9.012043
+151509 epoch=350 loss=9.012166
+151509 epoch=400 loss=9.011347
+{"ari": 0.5676502637051727, "elapsed_seconds": 91.6039482090273, "final_loss": 9.011346817016602, "n_clusters": 7, "n_spots": 4788, "nmi": 0.6879183845532345, "refined_ari": 0.5697826064211902, "refined_nmi": 0.68871176136096, "section_id": "151509"}
+151510 epoch=001 loss=9.066159
+151510 epoch=050 loss=9.005904
+151510 epoch=100 loss=8.986286
+151510 epoch=150 loss=8.984021
+151510 epoch=200 loss=8.982446
+151510 epoch=250 loss=8.981806
+151510 epoch=300 loss=8.981416
+151510 epoch=350 loss=8.981200
+151510 epoch=400 loss=8.981148
+{"ari": 0.4902040092370155, "elapsed_seconds": 96.8956623749691, "final_loss": 8.981147766113281, "n_clusters": 7, "n_spots": 4595, "nmi": 0.6595026304707083, "refined_ari": 0.4929797104086136, "refined_nmi": 0.6642786327631754, "section_id": "151510"}
+151669 epoch=001 loss=8.813678
+151669 epoch=050 loss=8.742503
+151669 epoch=100 loss=8.729561
+151669 epoch=150 loss=8.728538
+151669 epoch=200 loss=8.728140
+151669 epoch=250 loss=8.726887
+151669 epoch=300 loss=8.726619
+151669 epoch=350 loss=8.726665
+151669 epoch=400 loss=8.726686
+{"ari": 0.2756366926628376, "elapsed_seconds": 88.3750326250447, "final_loss": 8.726685523986816, "n_clusters": 5, "n_spots": 3636, "nmi": 0.476604833015196, "refined_ari": 0.2797209621960517, "refined_nmi": 0.47588855627488613, "section_id": "151669"}
+151670 epoch=001 loss=8.770794
+151670 epoch=050 loss=8.708034
+151670 epoch=100 loss=8.691400
+151670 epoch=150 loss=8.690389
+151670 epoch=200 loss=8.689883
+151670 epoch=250 loss=8.688976
+151670 epoch=300 loss=8.688176
+151670 epoch=350 loss=8.687821
+151670 epoch=400 loss=8.688590
+{"ari": 0.5203950051726832, "elapsed_seconds": 89.40370679198531, "final_loss": 8.688590049743652, "n_clusters": 5, "n_spots": 3484, "nmi": 0.5597910377579274, "refined_ari": 0.5213373260858453, "refined_nmi": 0.5616747594825995, "section_id": "151670"}
+151671 epoch=001 loss=8.929056
+151671 epoch=050 loss=8.861325
+151671 epoch=100 loss=8.845783
+151671 epoch=150 loss=8.845396
+151671 epoch=200 loss=8.844279
+151671 epoch=250 loss=8.844042
+151671 epoch=300 loss=8.843479
+151671 epoch=350 loss=8.843331
+151671 epoch=400 loss=8.842965
+{"ari": 0.46017122285364426, "elapsed_seconds": 99.55965870799264, "final_loss": 8.842965126037598, "n_clusters": 5, "n_spots": 4093, "nmi": 0.6083382422815944, "refined_ari": 0.46927607788543685, "refined_nmi": 0.617806969410414, "section_id": "151671"}
+151672 epoch=001 loss=8.898596
+151672 epoch=050 loss=8.843630
+151672 epoch=100 loss=8.819568
+151672 epoch=150 loss=8.816800
+151672 epoch=200 loss=8.816374
+151672 epoch=250 loss=8.815406
+151672 epoch=300 loss=8.815599
+151672 epoch=350 loss=8.815098
+151672 epoch=400 loss=8.814827
+{"ari": 0.5321185558224617, "elapsed_seconds": 85.54989466594998, "final_loss": 8.814826965332031, "n_clusters": 5, "n_spots": 3888, "nmi": 0.6721330242275501, "refined_ari": 0.5308971465313074, "refined_nmi": 0.6727519591858654, "section_id": "151672"}
+151673 epoch=001 loss=8.825728
+151673 epoch=050 loss=8.760697
+151673 epoch=100 loss=8.747924
+151673 epoch=150 loss=8.745813
+151673 epoch=200 loss=8.745893
+151673 epoch=250 loss=8.744468
+151673 epoch=300 loss=8.744188
+151673 epoch=350 loss=8.744234
+151673 epoch=400 loss=8.743952
+{"ari": 0.5520890849008958, "elapsed_seconds": 88.31916554202326, "final_loss": 8.743951797485352, "n_clusters": 7, "n_spots": 3611, "nmi": 0.6958121706889947, "refined_ari": 0.55713123867824, "refined_nmi": 0.7018383195892303, "section_id": "151673"}
+151674 epoch=001 loss=8.827168
+151674 epoch=050 loss=8.758981
+151674 epoch=100 loss=8.745724
+151674 epoch=150 loss=8.742876
+151674 epoch=200 loss=8.741099
+151674 epoch=250 loss=8.740558
+151674 epoch=300 loss=8.740251
+151674 epoch=350 loss=8.740214
+151674 epoch=400 loss=8.740175
+{"ari": 0.5523475528068723, "elapsed_seconds": 89.8085787500022, "final_loss": 8.740175247192383, "n_clusters": 7, "n_spots": 3635, "nmi": 0.6878927074673507, "refined_ari": 0.5556671780028728, "refined_nmi": 0.6900510342917918, "section_id": "151674"}
+151675 epoch=001 loss=8.824408
+151675 epoch=050 loss=8.763106
+151675 epoch=100 loss=8.747595
+151675 epoch=150 loss=8.746246
+151675 epoch=200 loss=8.745381
+151675 epoch=250 loss=8.745157
+151675 epoch=300 loss=8.744889
+151675 epoch=350 loss=8.744715
+151675 epoch=400 loss=8.744594
+{"ari": 0.5581615043865776, "elapsed_seconds": 89.79879383300431, "final_loss": 8.744593620300293, "n_clusters": 7, "n_spots": 3566, "nmi": 0.6795452176540736, "refined_ari": 0.5558509972466084, "refined_nmi": 0.6773792157561979, "section_id": "151675"}
+151676 epoch=001 loss=8.784475
+151676 epoch=050 loss=8.718199
+151676 epoch=100 loss=8.705400
+151676 epoch=150 loss=8.703166
+151676 epoch=200 loss=8.702523
+151676 epoch=250 loss=8.702585
+151676 epoch=300 loss=8.702069
+151676 epoch=350 loss=8.701832
+151676 epoch=400 loss=8.702080
+{"ari": 0.5394381654855732, "elapsed_seconds": 82.90926837496227, "final_loss": 8.702079772949219, "n_clusters": 7, "n_spots": 3431, "nmi": 0.6852616836609801, "refined_ari": 0.5439026976034699, "refined_nmi": 0.6908889987905883, "section_id": "151676"}
+{
+  "run_id": "staig_baseline_seed0_all12_regen_v1",
+  "implementation": "repository-local STAIG adaptation",
+  "input_image_key": "img_emb",
+  "node_feature_source": "section_hvg_expression",
+  "image_feature_source": "img_emb",
+  "config": {
+    "n_neighbors": 5,
+    "hidden_dim": 64,
+    "projection_dim": 64,
+    "n_layers": 1,
+    "temperature": 10.0,
+    "epochs": 400,
+    "learning_rate": 0.0005,
+    "weight_decay": 1e-05,
+    "feature_mask_rate_1": 0.1,
+    "feature_mask_rate_2": 0.1,
+    "image_pseudo_clusters": 40,
+    "image_pca_dim": 16,
+    "refinement_neighbors": 15,
+    "seed": 0,
+    "dtype": "float32"
+  },
+  "sections": [
+    "151507",
+    "151508",
+    "151509",
+    "151510",
+    "151669",
+    "151670",
+    "151671",
+    "151672",
+    "151673",
+    "151674",
+    "151675",
+    "151676"
+  ],
+  "n_sections": 12,
+  "metrics": {
+    "ari": {
+      "mean": 0.5058209096298508,
+      "median": 0.5357783606540174,
+      "iqr": 0.06517001436990627
+    },
+    "nmi": {
+      "mean": 0.6419233540029239,
+      "median": 0.6720869790334376,
+      "iqr": 0.07015534222855968
+    },
+    "refined_ari": {
+      "mean": 0.5092058911668258,
+      "median": 0.5373999220673886,
+      "iqr": 0.06559424598165431
+    },
+    "refined_nmi": {
+      "mean": 0.6455014589225619,
+      "median": 0.6750655874710316,
+      "iqr": 0.06593673772069153
+    }
+  },
+  "deviations": [
+    "Uses fixed repository img_emb instead of STAIG filtered-patch BYOL embeddings.",
+    "Uses sklearn tied-covariance GMM as the R mclust EEE analogue.",
+    "Uses float32; the official implementation casts the model and inputs to float64.",
+    "Uses seed 0; the paper supplement does not declare one DLPFC seed, while the released 151673 notebook uses 39788."
+  ]
+}

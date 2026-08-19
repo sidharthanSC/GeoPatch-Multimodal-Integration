@@ -28,6 +28,10 @@ outputs/**
 !outputs/**/*.csv
 !outputs/**/*.json
 !outputs/**/*.md
+# Provenance for runs whose numbers are quoted in the READMEs: the exploratory
+# sweep scripts that produced them, and the stdout of the long runs (~108 KB).
+!outputs/**/*.py
+!outputs/**/*.log
 # Legacy per-spot k-NN dumps (~18 MB): row-per-spot intermediates, not results.
 outputs/analysis/*knn_predictions_full.csv
 outputs/analysis/*changed_spots.csv

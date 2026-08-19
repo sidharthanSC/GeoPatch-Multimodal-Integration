@@ -1,0 +1,200 @@
+
+=== arm k_spatial_attention ===
+/Users/sidharthansc/Documents/Sidharthan/GeoPatch/src/sparc_align/train.py:168: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /Users/runner/work/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:823.)
+  totals[key] += float(loss_dict[key]) * (end - start)
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.1585414882968454, "cross_nmse_image_to_gene": 0.930860393187579, "elapsed_seconds": 39.40276708290912, "section_id": "151507", "self_nmse_gene": 0.8828496371998507, "self_nmse_image": 0.22265671631869147, "sum_ari": 0.1862830098009456, "sum_nmi": 0.3570557101927231, "support_ari": 0.26672291263387127, "support_nmi": 0.46898246536367433}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.14923839684989718, "cross_nmse_image_to_gene": 0.9381394253836738, "elapsed_seconds": 39.8401366249891, "section_id": "151508", "self_nmse_gene": 0.894955144988166, "self_nmse_image": 0.19873543663157356, "sum_ari": 0.2250080480496525, "sum_nmi": 0.3449078437200433, "support_ari": 0.38316784048065483, "support_nmi": 0.49231252409371795}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.1620277762413025, "cross_nmse_image_to_gene": 0.9307529518478795, "elapsed_seconds": 43.164950000005774, "section_id": "151509", "self_nmse_gene": 0.8841822994382758, "self_nmse_image": 0.22049862381659055, "sum_ari": 0.27616280088513, "sum_nmi": 0.4381061374728704, "support_ari": 0.28062485699355255, "support_nmi": 0.46648938132029344}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.15107746339506573, "cross_nmse_image_to_gene": 0.9305285149150424, "elapsed_seconds": 41.64922525000293, "section_id": "151510", "self_nmse_gene": 0.8843318290180631, "self_nmse_image": 0.21487554576661852, "sum_ari": 0.0300377370924592, "sum_nmi": 0.14674526492056394, "support_ari": 0.4113008194265977, "support_nmi": 0.4823227987921599}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.16201360722382863, "cross_nmse_image_to_gene": 0.9333635727564494, "elapsed_seconds": 35.5366262079915, "section_id": "151669", "self_nmse_gene": 0.8883790095647176, "self_nmse_image": 0.21058602233727772, "sum_ari": -0.021256527101997366, "sum_nmi": 0.017560971272235035, "support_ari": 0.2689574313161643, "support_nmi": 0.37904289370955235}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.16173003826822555, "cross_nmse_image_to_gene": 0.9301078234400068, "elapsed_seconds": 35.121576874982566, "section_id": "151670", "self_nmse_gene": 0.8822627706187112, "self_nmse_image": 0.21136308354990824, "sum_ari": 0.04078816525382393, "sum_nmi": 0.06351826303369332, "support_ari": 0.25021552003669356, "support_nmi": 0.38596562379844995}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.15748535562306643, "cross_nmse_image_to_gene": 0.9344157576560974, "elapsed_seconds": 41.38124187500216, "section_id": "151671", "self_nmse_gene": 0.8865608349442482, "self_nmse_image": 0.20413960423320532, "sum_ari": -0.03710708551576346, "sum_nmi": 0.02221904108129003, "support_ari": 0.4243702637026857, "support_nmi": 0.5312327879810933}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.18057831283658743, "cross_nmse_image_to_gene": 0.9295701943337917, "elapsed_seconds": 39.81393691699486, "section_id": "151672", "self_nmse_gene": 0.8801650404930115, "self_nmse_image": 0.25304771680384874, "sum_ari": 0.08889131677367769, "sum_nmi": 0.19951485232409127, "support_ari": 0.19251254311980004, "support_nmi": 0.34823622587816433}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.16003364324569702, "cross_nmse_image_to_gene": 0.9134516676266988, "elapsed_seconds": 37.42532475001644, "section_id": "151673", "self_nmse_gene": 0.8675211270650228, "self_nmse_image": 0.2230236570040385, "sum_ari": 0.1805407759923443, "sum_nmi": 0.39646483754919254, "support_ari": 0.3451465080880022, "support_nmi": 0.5493690863499647}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.14580254157384237, "cross_nmse_image_to_gene": 0.9134820977846781, "elapsed_seconds": 37.24135849997401, "section_id": "151674", "self_nmse_gene": 0.866904330253601, "self_nmse_image": 0.20621485710144044, "sum_ari": 0.11850955339209768, "sum_nmi": 0.3226698299699963, "support_ari": 0.3412942115257037, "support_nmi": 0.4486558808653744}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.17297753585236414, "cross_nmse_image_to_gene": 0.9104668157441276, "elapsed_seconds": 36.47706516692415, "section_id": "151675", "self_nmse_gene": 0.8582456026758466, "self_nmse_image": 0.2569431960582733, "sum_ari": 0.1920530718728554, "sum_nmi": 0.4174397985205627, "support_ari": 0.31937106233377277, "support_nmi": 0.45616735879078313}
+{"all_alive_fraction": 1.0, "arm": "k_spatial_attention", "cross_nmse_gene_to_image": 0.15631950008017675, "cross_nmse_image_to_gene": 0.9150138454777854, "elapsed_seconds": 35.234735791920684, "section_id": "151676", "self_nmse_gene": 0.8641383392470223, "self_nmse_image": 0.22790399832384928, "sum_ari": 0.1283176554826857, "sum_nmi": 0.30432017123544963, "support_ari": 0.24669645263755433, "support_nmi": 0.4481628352000992}
+
+=== arm l_spatial_attention_mlp1024 ===
+{"all_alive_fraction": 0.7822265625, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.12391630866948296, "cross_nmse_image_to_gene": 0.9490350975709803, "elapsed_seconds": 51.910368375014514, "section_id": "151507", "self_nmse_gene": 0.9302018284797668, "self_nmse_image": 0.19214086935800664, "sum_ari": 0.20356852938701772, "sum_nmi": 0.3354375117801428, "support_ari": 0.3481762521991378, "support_nmi": 0.4341839633757046}
+{"all_alive_fraction": 0.81640625, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.12023378991418415, "cross_nmse_image_to_gene": 0.955734564198388, "elapsed_seconds": 54.63927095802501, "section_id": "151508", "self_nmse_gene": 0.9403528471787771, "self_nmse_image": 0.18098324454492992, "sum_ari": 0.41112044330045416, "sum_nmi": 0.47323813224281075, "support_ari": 0.32779410499382766, "support_nmi": 0.46591735039383475}
+{"all_alive_fraction": 0.8154296875, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.13766980210417196, "cross_nmse_image_to_gene": 0.949595078041679, "elapsed_seconds": 59.26762279099785, "section_id": "151509", "self_nmse_gene": 0.9300831211240668, "self_nmse_image": 0.20597075788598312, "sum_ari": 0.3692233027706195, "sum_nmi": 0.4359472479352814, "support_ari": 0.24228227242458514, "support_nmi": 0.4384335041947189}
+{"all_alive_fraction": 0.775390625, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.11323610569039981, "cross_nmse_image_to_gene": 0.9492686688899994, "elapsed_seconds": 57.023271000012755, "section_id": "151510", "self_nmse_gene": 0.9314941896332635, "self_nmse_image": 0.17840136339267096, "sum_ari": 0.2567850857804665, "sum_nmi": 0.3916767516765623, "support_ari": 0.28897355427211924, "support_nmi": 0.4512836029566535}
+{"all_alive_fraction": 0.8427734375, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.13330499132474263, "cross_nmse_image_to_gene": 0.9473891536394755, "elapsed_seconds": 44.85972175002098, "section_id": "151669", "self_nmse_gene": 0.9295899073282877, "self_nmse_image": 0.2060161938269933, "sum_ari": -0.03290807238336138, "sum_nmi": 0.048274291454073165, "support_ari": 0.24136447967838146, "support_nmi": 0.3646952506212031}
+{"all_alive_fraction": 0.8447265625, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.12910317682794162, "cross_nmse_image_to_gene": 0.9435624735695975, "elapsed_seconds": 42.555128125008196, "section_id": "151670", "self_nmse_gene": 0.9244949689933232, "self_nmse_image": 0.20810391115290777, "sum_ari": 0.24667642399540934, "sum_nmi": 0.22794723556525118, "support_ari": 0.3875939225302518, "support_nmi": 0.36270649919598946}
+{"all_alive_fraction": 0.8310546875, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.12229437753558159, "cross_nmse_image_to_gene": 0.9491958878934383, "elapsed_seconds": 50.137698916951194, "section_id": "151671", "self_nmse_gene": 0.928132638335228, "self_nmse_image": 0.19543485902249813, "sum_ari": -0.04480757473833776, "sum_nmi": 0.06306610475079587, "support_ari": 0.20760398227723523, "support_nmi": 0.29984244764043094}
+{"all_alive_fraction": 0.7373046875, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.1477098325267434, "cross_nmse_image_to_gene": 0.9497058466076851, "elapsed_seconds": 48.366076415986754, "section_id": "151672", "self_nmse_gene": 0.9283511191606522, "self_nmse_image": 0.21486883983016014, "sum_ari": 0.12933255790499562, "sum_nmi": 0.22872785573805393, "support_ari": 0.07276875128419244, "support_nmi": 0.17319684214375894}
+{"all_alive_fraction": 0.76953125, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.14258501231670379, "cross_nmse_image_to_gene": 0.9288316647211711, "elapsed_seconds": 45.05083045794163, "section_id": "151673", "self_nmse_gene": 0.9114894151687623, "self_nmse_image": 0.21006152927875518, "sum_ari": 0.2688486816262515, "sum_nmi": 0.4173119367753132, "support_ari": 0.3104549332544156, "support_nmi": 0.42359545378527147}
+{"all_alive_fraction": 0.8095703125, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.1266165773073832, "cross_nmse_image_to_gene": 0.926903486251831, "elapsed_seconds": 45.17786033404991, "section_id": "151674", "self_nmse_gene": 0.9093295216560364, "self_nmse_image": 0.19891158640384674, "sum_ari": 0.2828494072835846, "sum_nmi": 0.43497093285152855, "support_ari": 0.30066750075176546, "support_nmi": 0.4428521882561493}
+{"all_alive_fraction": 0.7109375, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.13447647435324533, "cross_nmse_image_to_gene": 0.9306771414620536, "elapsed_seconds": 44.64034083299339, "section_id": "151675", "self_nmse_gene": 0.9088188239506313, "self_nmse_image": 0.20207586671624864, "sum_ari": 0.2007970225642041, "sum_nmi": 0.37682937293959623, "support_ari": 0.2562473443801847, "support_nmi": 0.4313866471741422}
+{"all_alive_fraction": 0.76953125, "arm": "l_spatial_attention_mlp1024", "cross_nmse_gene_to_image": 0.11636244984609741, "cross_nmse_image_to_gene": 0.9308382911341531, "elapsed_seconds": 42.92538054205943, "section_id": "151676", "self_nmse_gene": 0.9118207693099976, "self_nmse_image": 0.18544793128967285, "sum_ari": 0.2202458268828131, "sum_nmi": 0.3527570039792858, "support_ari": 0.3455318750789359, "support_nmi": 0.4286653358931487}
+
+=== arm m_spatial_attention_partitioned ===
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.20985234835568597, "cross_nmse_image_to_gene": 0.9444043601260466, "elapsed_seconds": 52.495543290977366, "section_id": "151507", "self_nmse_gene": 0.8858649695620817, "self_nmse_image": 0.22576997823574962, "sum_ari": 0.05535558160588134, "sum_nmi": 0.21022523002643617, "support_ari": 0.23828211997392462, "support_nmi": 0.4644067660813078}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.20488878505097496, "cross_nmse_image_to_gene": 0.9504065480497148, "elapsed_seconds": 54.06736208300572, "section_id": "151508", "self_nmse_gene": 0.8970410492685106, "self_nmse_image": 0.20108703523874283, "sum_ari": 0.2745584182793071, "sum_nmi": 0.4260153184562823, "support_ari": 0.31179809157875576, "support_nmi": 0.46568599905565106}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.21313287082471347, "cross_nmse_image_to_gene": 0.9439979101482191, "elapsed_seconds": 58.78196149994619, "section_id": "151509", "self_nmse_gene": 0.8865671095095182, "self_nmse_image": 0.22260745026563344, "sum_ari": 0.3046352174187506, "sum_nmi": 0.448720176204614, "support_ari": 0.4291985292718049, "support_nmi": 0.5016255506148638}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.20169411682420307, "cross_nmse_image_to_gene": 0.9438308378060659, "elapsed_seconds": 56.020488457987085, "section_id": "151510", "self_nmse_gene": 0.8869453900390201, "self_nmse_image": 0.21746291054619682, "sum_ari": 0.17475237749153488, "sum_nmi": 0.3594326646095218, "support_ari": 0.28612329836956524, "support_nmi": 0.45328972705088627}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.21191966434319814, "cross_nmse_image_to_gene": 0.9462452292442322, "elapsed_seconds": 45.46928295795806, "section_id": "151669", "self_nmse_gene": 0.8903695424397786, "self_nmse_image": 0.21318643887837727, "sum_ari": -0.009725767192765557, "sum_nmi": 0.055431911176986835, "support_ari": 0.21800884732555448, "support_nmi": 0.3858158011142801}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.2067069634795189, "cross_nmse_image_to_gene": 0.943593966109412, "elapsed_seconds": 42.005889541935176, "section_id": "151670", "self_nmse_gene": 0.8843842787402016, "self_nmse_image": 0.2158798085791724, "sum_ari": -0.021691416540377522, "sum_nmi": 0.07203633652635576, "support_ari": 0.19621079481961187, "support_nmi": 0.33946258555163483}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.2026932630687952, "cross_nmse_image_to_gene": 0.9480498805642128, "elapsed_seconds": 49.60911733296234, "section_id": "151671", "self_nmse_gene": 0.888366375118494, "self_nmse_image": 0.2081314893439412, "sum_ari": 0.06924077638098025, "sum_nmi": 0.22646240626986452, "support_ari": 0.23889258992792742, "support_nmi": 0.3284858137564845}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.23389143962413073, "cross_nmse_image_to_gene": 0.9454941153526306, "elapsed_seconds": 47.653571374947205, "section_id": "151672", "self_nmse_gene": 0.8836003243923187, "self_nmse_image": 0.2572764614596963, "sum_ari": 0.08771763706136287, "sum_nmi": 0.21987912904729068, "support_ari": 0.16047185931928554, "support_nmi": 0.34517032928317676}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.2123952011267344, "cross_nmse_image_to_gene": 0.9276704589525858, "elapsed_seconds": 44.45622266700957, "section_id": "151673", "self_nmse_gene": 0.8707391937573751, "self_nmse_image": 0.22633131543795268, "sum_ari": 0.21984628874541481, "sum_nmi": 0.44759985778715394, "support_ari": 0.3173281866948331, "support_nmi": 0.5431617234723495}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.1935649534066518, "cross_nmse_image_to_gene": 0.9274289766947429, "elapsed_seconds": 44.44742570898961, "section_id": "151674", "self_nmse_gene": 0.8689433693885803, "self_nmse_image": 0.20888920029004415, "sum_ari": 0.14312531468428258, "sum_nmi": 0.3753186431853955, "support_ari": 0.3470164238172003, "support_nmi": 0.44983286253761945}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.22245657124689647, "cross_nmse_image_to_gene": 0.9268439752714974, "elapsed_seconds": 43.146845625014976, "section_id": "151675", "self_nmse_gene": 0.8624346511704581, "self_nmse_image": 0.26165235149008886, "sum_ari": 0.19550796600579395, "sum_nmi": 0.38175555982396014, "support_ari": 0.31933509060109594, "support_nmi": 0.47064153486145455}
+{"all_alive_fraction": 0.5, "arm": "m_spatial_attention_partitioned", "cross_nmse_gene_to_image": 0.20227049823318208, "cross_nmse_image_to_gene": 0.9301526120730809, "elapsed_seconds": 41.93848191597499, "section_id": "151676", "self_nmse_gene": 0.8668270834854671, "self_nmse_image": 0.2300735797200884, "sum_ari": 0.18460054258213468, "sum_nmi": 0.34957854017751055, "support_ari": 0.29830856334720784, "support_nmi": 0.470321237174184}
+
+=== arm n_spatial_attention_plus_stage2 ===
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.3915985229489379, "attn_input": "support", "attn_nmi": 0.5123065678334033, "cross_nmse_gene_to_image": 0.1585414882968454, "cross_nmse_image_to_gene": 0.930860393187579, "elapsed_seconds": 67.91513562493492, "section_id": "151507", "self_nmse_gene": 0.8828496371998507, "self_nmse_image": 0.22265671631869147, "sum_ari": 0.1862830098009456, "sum_nmi": 0.3570557101927231, "support_ari": 0.26672291263387127, "support_nmi": 0.46898246536367433}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.45413353393154754, "attn_input": "support", "attn_nmi": 0.5543379340033162, "cross_nmse_gene_to_image": 0.14923839684989718, "cross_nmse_image_to_gene": 0.9381394253836738, "elapsed_seconds": 70.6310726669617, "section_id": "151508", "self_nmse_gene": 0.894955144988166, "self_nmse_image": 0.19873543663157356, "sum_ari": 0.2250080480496525, "sum_nmi": 0.3449078437200433, "support_ari": 0.38316784048065483, "support_nmi": 0.49231252409371795}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.47074454099874397, "attn_input": "support", "attn_nmi": 0.5576267028245715, "cross_nmse_gene_to_image": 0.1620277762413025, "cross_nmse_image_to_gene": 0.9307529518478795, "elapsed_seconds": 77.56378850003239, "section_id": "151509", "self_nmse_gene": 0.8841822994382758, "self_nmse_image": 0.22049862381659055, "sum_ari": 0.27616280088513, "sum_nmi": 0.4381061374728704, "support_ari": 0.28062485699355255, "support_nmi": 0.46648938132029344}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.49355311989862194, "attn_input": "support", "attn_nmi": 0.5474924289620016, "cross_nmse_gene_to_image": 0.15107746339506573, "cross_nmse_image_to_gene": 0.9305285149150424, "elapsed_seconds": 74.35487220901996, "section_id": "151510", "self_nmse_gene": 0.8843318290180631, "self_nmse_image": 0.21487554576661852, "sum_ari": 0.0300377370924592, "sum_nmi": 0.14674526492056394, "support_ari": 0.4113008194265977, "support_nmi": 0.4823227987921599}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.32914596782656813, "attn_input": "support", "attn_nmi": 0.4505832195645998, "cross_nmse_gene_to_image": 0.16201360722382863, "cross_nmse_image_to_gene": 0.9333635727564494, "elapsed_seconds": 56.909988458966836, "section_id": "151669", "self_nmse_gene": 0.8883790095647176, "self_nmse_image": 0.21058602233727772, "sum_ari": -0.021256527101997366, "sum_nmi": 0.017560971272235035, "support_ari": 0.2689574313161643, "support_nmi": 0.37904289370955235}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.39223356737680914, "attn_input": "support", "attn_nmi": 0.4151648702517486, "cross_nmse_gene_to_image": 0.16173003826822555, "cross_nmse_image_to_gene": 0.9301078234400068, "elapsed_seconds": 54.5478573750006, "section_id": "151670", "self_nmse_gene": 0.8822627706187112, "self_nmse_image": 0.21136308354990824, "sum_ari": 0.04078816525382393, "sum_nmi": 0.06351826303369332, "support_ari": 0.25021552003669356, "support_nmi": 0.38596562379844995}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.3062664069190481, "attn_input": "support", "attn_nmi": 0.4634892046474048, "cross_nmse_gene_to_image": 0.15748535562306643, "cross_nmse_image_to_gene": 0.9344157576560974, "elapsed_seconds": 65.1750840001041, "section_id": "151671", "self_nmse_gene": 0.8865608349442482, "self_nmse_image": 0.20413960423320532, "sum_ari": -0.03710708551576346, "sum_nmi": 0.02221904108129003, "support_ari": 0.4243702637026857, "support_nmi": 0.5312327879810933}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.3634263272965373, "attn_input": "support", "attn_nmi": 0.48689614655842567, "cross_nmse_gene_to_image": 0.18057831283658743, "cross_nmse_image_to_gene": 0.9295701943337917, "elapsed_seconds": 61.77112062496599, "section_id": "151672", "self_nmse_gene": 0.8801650404930115, "self_nmse_image": 0.25304771680384874, "sum_ari": 0.08889131677367769, "sum_nmi": 0.19951485232409127, "support_ari": 0.19251254311980004, "support_nmi": 0.34823622587816433}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.29200405721056766, "attn_input": "support", "attn_nmi": 0.4410914588690372, "cross_nmse_gene_to_image": 0.16003364324569702, "cross_nmse_image_to_gene": 0.9134516676266988, "elapsed_seconds": 57.18148516595829, "section_id": "151673", "self_nmse_gene": 0.8675211270650228, "self_nmse_image": 0.2230236570040385, "sum_ari": 0.1805407759923443, "sum_nmi": 0.39646483754919254, "support_ari": 0.3451465080880022, "support_nmi": 0.5493690863499647}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.37275419313262426, "attn_input": "support", "attn_nmi": 0.46475520804828696, "cross_nmse_gene_to_image": 0.14580254157384237, "cross_nmse_image_to_gene": 0.9134820977846781, "elapsed_seconds": 57.685471958015114, "section_id": "151674", "self_nmse_gene": 0.866904330253601, "self_nmse_image": 0.20621485710144044, "sum_ari": 0.11850955339209768, "sum_nmi": 0.3226698299699963, "support_ari": 0.3412942115257037, "support_nmi": 0.4486558808653744}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.3434094096526856, "attn_input": "support", "attn_nmi": 0.46326343669042463, "cross_nmse_gene_to_image": 0.17297753585236414, "cross_nmse_image_to_gene": 0.9104668157441276, "elapsed_seconds": 56.01285291695967, "section_id": "151675", "self_nmse_gene": 0.8582456026758466, "self_nmse_image": 0.2569431960582733, "sum_ari": 0.1920530718728554, "sum_nmi": 0.4174397985205627, "support_ari": 0.31937106233377277, "support_nmi": 0.45616735879078313}
+{"all_alive_fraction": 1.0, "arm": "n_spatial_attention_plus_stage2", "attn_ari": 0.27924108563057887, "attn_input": "support", "attn_nmi": 0.43118255387485716, "cross_nmse_gene_to_image": 0.15631950008017675, "cross_nmse_image_to_gene": 0.9150138454777854, "elapsed_seconds": 53.77119004202541, "section_id": "151676", "self_nmse_gene": 0.8641383392470223, "self_nmse_image": 0.22790399832384928, "sum_ari": 0.1283176554826857, "sum_nmi": 0.30432017123544963, "support_ari": 0.24669645263755433, "support_nmi": 0.4481628352000992}
+
+{
+  "k_spatial_attention": {
+    "sum_ari": {
+      "mean": 0.11735237683149262,
+      "median": 0.12341360443739169,
+      "iqr": 0.1496249671054403
+    },
+    "sum_nmi": {
+      "mean": 0.25254356010772594,
+      "median": 0.31349500060272295,
+      "iqr": 0.24096947758299414
+    },
+    "support_ari": {
+      "mean": 0.31086503519125436,
+      "median": 0.29999795966366266,
+      "iqr": 0.09205577670158849
+    },
+    "support_nmi": {
+      "mean": 0.45474498851194395,
+      "median": 0.4613283700555383,
+      "iqr": 0.052206697767862464
+    },
+    "self_nmse_gene": {
+      "mean": 0.8783746637922114,
+      "median": 0.8825562039092809,
+      "iqr": 0.017522152637441946
+    },
+    "cross_nmse_image_to_gene": {
+      "mean": 0.9258460883461509,
+      "median": 0.9303181691775246,
+      "iqr": 0.01685527952528798
+    }
+  },
+  "l_spatial_attention_mlp1024": {
+    "sum_ari": {
+      "mean": 0.20931096953117642,
+      "median": 0.23346112543911124,
+      "iqr": 0.0894179566411828
+    },
+    "sum_nmi": {
+      "mean": 0.31551536480739123,
+      "median": 0.364793188459441,
+      "iqr": 0.19319398509951377
+    },
+    "support_ari": {
+      "mean": 0.277454914427086,
+      "median": 0.2948205275119423,
+      "iqr": 0.09017572327707052
+    },
+    "support_nmi": {
+      "mean": 0.3930632571359171,
+      "median": 0.43002599153364546,
+      "iqr": 0.0753401124451768
+    },
+    "self_nmse_gene": {
+      "mean": 0.9236799291932328,
+      "median": 0.9282418787479401,
+      "iqr": 0.018374867188303057
+    },
+    "cross_nmse_image_to_gene": {
+      "mean": 0.9425614461650377,
+      "median": 0.9482121256052278,
+      "iqr": 0.01855226746179106
+    }
+  },
+  "m_spatial_attention_partitioned": {
+    "sum_ari": {
+      "mean": 0.13982691137685835,
+      "median": 0.15893884608790873,
+      "iqr": 0.13582306900349367
+    },
+    "sum_nmi": {
+      "mean": 0.297704647774281,
+      "median": 0.35450560239351614,
+      "iqr": 0.17535484518996364
+    },
+    "support_ari": {
+      "mean": 0.28008119958723066,
+      "median": 0.29221593085838654,
+      "iqr": 0.08461611085956672
+    },
+    "support_nmi": {
+      "mean": 0.43482499421282433,
+      "median": 0.458848246566097,
+      "iqr": 0.09474687843949736
+    },
+    "self_nmse_gene": {
+      "mean": 0.8810069447393171,
+      "median": 0.8851246241511417,
+      "iqr": 0.01701039864371212
+    },
+    "cross_nmse_image_to_gene": {
+      "mean": 0.9398432391993702,
+      "median": 0.9439143739771425,
+      "iqr": 0.016149820032573925
+    }
+  },
+  "n_spatial_attention_plus_stage2": {
+    "sum_ari": {
+      "mean": 0.11735237683149262,
+      "median": 0.12341360443739169,
+      "iqr": 0.1496249671054403
+    },
+    "sum_nmi": {
+      "mean": 0.25254356010772594,
+      "median": 0.31349500060272295,
+      "iqr": 0.24096947758299414
+    },
+    "support_ari": {
+      "mean": 0.31086503519125436,
+      "median": 0.29999795966366266,
+      "iqr": 0.09205577670158849
+    },
+    "support_nmi": {
+      "mean": 0.45474498851194395,
+      "median": 0.4613283700555383,
+      "iqr": 0.052206697767862464
+    },
+    "attn_ari": {
+      "mean": 0.37404256106860584,
+      "median": 0.3680902602145808,
+      "iqr": 0.08428248141580563
+    },
+    "attn_nmi": {
+      "mean": 0.48234914434400644,
+      "median": 0.46412220634784584,
+      "iqr": 0.07289275372484372
+    },
+    "self_nmse_gene": {
+      "mean": 0.8783746637922114,
+      "median": 0.8825562039092809,
+      "iqr": 0.017522152637441946
+    },
+    "cross_nmse_image_to_gene": {
+      "mean": 0.9258460883461509,
+      "median": 0.9303181691775246,
+      "iqr": 0.01685527952528798
+    }
+  }
+}
