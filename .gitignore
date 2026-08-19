@@ -11,13 +11,32 @@ dist/
 Dataset/
 data/
 
-# Derived, regeneratable artifacts -- everything under outputs/ is produced by
-# scripts in src/, so none of it needs to be tracked, except its run-configuration
-# index (documentation, not a generated artifact). `outputs/*` (not `outputs/`) so the
-# exception below can actually re-include a file git would otherwise never look at.
-outputs/*
+# Derived artifacts under outputs/. The heavy binaries (~739 MB of .npz/.pt) stay
+# untracked -- they are regenerable from src/ and too large for git. But the small
+# human-readable results (per-section metrics, ablation tables, run summaries) ARE
+# tracked: they are the evidence every report in results/ cites, and losing them is
+# not hypothetical -- outputs/mp_mnca/ and outputs/prior_models/ both went missing
+# while four documents still cited their numbers, which nobody could then verify.
+# The whole tracked set is only ~3 MB.
+#
+# `outputs/**` plus the `!outputs/**/` directory re-include is required: with a plain
+# `outputs/*` git never descends into subdirectories, so negations inside them are
+# silently ignored.
+outputs/**
+!outputs/**/
 !outputs/README.md
+!outputs/**/*.csv
+!outputs/**/*.json
+!outputs/**/*.md
+# Legacy per-spot k-NN dumps (~18 MB): row-per-spot intermediates, not results.
+outputs/analysis/*knn_predictions_full.csv
+outputs/analysis/*changed_spots.csv
 checkpoints/
+
+# Reference papers: STAIG.pdf (6 MB) is tracked for history, but the 44 MB SPARC
+# paper is a public arXiv preprint (2507.06265) -- permanent clone bloat for
+# something anyone can re-download.
+SPARC_concept_aligned_SAE_cross_modal.pdf
 
 # OS
 .DS_Store
