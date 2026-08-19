@@ -39,7 +39,12 @@ So the published comparison was **supervised MP-MNCA vs unsupervised STAIG**.
 
 Controlled A/B: identical seed, config, architecture and epoch count (20); the *only*
 difference is the pseudo-label source. Run: `outputs/mp_mnca/leak_ab_all12_v1/`
-(`leak_ab_all_sections.csv`, `summary.json`); code `src/mp_mnca/leak_ab.py`.
+(`leak_ab_all_sections.csv`, `summary.json`).
+
+The measurement script has since been removed: the leak was independently fixed on
+`SM/geopatch` by dropping the pseudo-label negative mask altogether, so `src/mp_mnca/`
+now carries that fix and there is nothing left to toggle. The per-section results
+below are retained as the record of what the leak was worth.
 
 | Section | leaked ARI | unsupervised ARI | ARI leak | STAIG | unsup − STAIG |
 |---|---|---|---|---|---|

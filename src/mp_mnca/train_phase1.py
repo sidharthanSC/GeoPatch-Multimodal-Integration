@@ -14,13 +14,17 @@ import numpy as np
 import torch
 
 from src.datasets.dlpfc import DlpfcDataset
-from src.prior_models.staig.data import build_spatial_graph, image_guided_edge_probabilities
+from src.prior_models.staig.data import (
+    build_spatial_graph,
+    image_guided_edge_probabilities,
+    sample_augmented_edges,
+)
 from src.prior_models.staig.evaluate import clustering_metrics, refine_labels, tied_gmm
-from src.prior_models.staig.model import mask_features
+from src.prior_models.staig.model import mask_features, normalized_adjacency
 
 from .config import MpMncaConfig
 from .data import MpMncaSectionData, prepare_image_features, prepare_section
-from .model import contrastive_loss, contrastive_loss_masked
+from .model import contrastive_loss
 from .phase1 import Phase1Model, Phase1Output
 
 
@@ -93,46 +97,13 @@ def fit_phase1(
     section_data: MpMncaSectionData,
     config: MpMncaConfig,
     device: torch.device | str | None = None,
-    pseudo_label_source: str | None = None,
 ) -> Phase1Result:
-    """Fit Phase 1 with a neighbour-contrastive loss on 3000-dim embeddings.
-
-    The production objective is ``model.contrastive_loss`` -- no pseudo-label negative
-    mask at all. Positives are the same-spot diagonal and the spatial k-NN neighbours;
-    every other spot is a negative. No labels of any kind are involved.
-
-    ``pseudo_label_source`` exists only to reproduce the label-leak measurement and
-    defaults to ``None`` (the production objective above):
-
-    - ``None`` (default): unmasked loss. Fully unsupervised.
-    - ``"ground_truth"``: masks out same-cortical-layer spots from the negatives via
-      ``model.contrastive_loss_masked``. **This leaks the evaluation label into
-      training** and was this function's unconditional behaviour when the 0.824 mean
-      refined ARI in ``results/`` was produced, which is why that figure is not
-      comparable to STAIG's unsupervised 0.507. Kept solely so
-      ``src/mp_mnca/leak_ab.py`` can still quantify the leak; never use it to produce
-      a reported result. See ``results/mp_mnca_label_leak_correction.md``.
-    """
+    """Fit Phase 1 with STAIG-style contrastive loss on 3000-dim embeddings."""
     _set_seed(config.seed)
     device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     dtype = torch.float32 if config.dtype == "float32" else torch.float64
 
     n_spots = section_data.gene_expression.shape[0]
-
-    # Only populated for the leak-reproduction path; None means the unmasked
-    # production objective.
-    leaked_pseudo_labels = None
-    if pseudo_label_source == "ground_truth":
-        label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
-        leaked_pseudo_labels = torch.as_tensor(
-            np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64),
-            dtype=torch.long,
-            device=torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu")),
-        )
-    elif pseudo_label_source is not None:
-        raise ValueError(
-            f"pseudo_label_source must be None or 'ground_truth', got {pseudo_label_source!r}"
-        )
 
     model = Phase1Model(config)
     model = model.to(device=device, dtype=dtype)
@@ -151,10 +122,7 @@ def fit_phase1(
     center_coords = torch.as_tensor(section_data.coordinates, dtype=dtype, device=device)
     neighbor_idx = torch.as_tensor(section_data.neighbor_indices, dtype=torch.long, device=device)
 
-    # Neighbour gene expression is NOT materialized here: the training loop indexes
-    # the masked views directly (masked_1[neighbor_idx[...]]) and evaluation indexes
-    # `features`, so a precomputed (n_spots, n_neighbors, gene_dim) copy would be
-    # ~300 MB of dead weight -- enough to push parallel runs into swap.
+    neighbor_genes = features[neighbor_idx]
     neighbor_images = center_image[neighbor_idx]
     neighbor_coords = center_coords[neighbor_idx]
 
@@ -163,6 +131,8 @@ def fit_phase1(
     dst = section_data.neighbor_indices.ravel()
     edge_index_np = np.stack([src, dst], axis=0).astype(np.int64)
     edge_index = torch.as_tensor(edge_index_np, dtype=torch.long, device=device)
+
+    edge_drop_prob = np.ones(edge_index_np.shape[1]) * 0.1
 
     batch_size = config.batch_size
     n_batches = (n_spots + batch_size - 1) // batch_size
@@ -181,14 +151,18 @@ def fit_phase1(
 
             optimizer.zero_grad(set_to_none=True)
 
-            # NOTE: STAIG's image-guided edge dropping is deliberately absent here.
-            # Earlier revisions sampled augmented edges and built normalized
-            # adjacencies at this point, but Phase1Model takes no adjacency argument,
-            # so those tensors never reached the loss -- the "continuous attention
-            # replaces binary edge dropping" claim in results/ described a mechanism
-            # the objective never saw. Removed rather than wired up, to keep this
-            # function's behaviour identical to the runs being measured. The only
-            # graph augmentation actually in effect is the feature masking below.
+            # Two augmented views
+            edges_1 = torch.as_tensor(
+                sample_augmented_edges(edge_index_np, edge_drop_prob, numpy_rng),
+                dtype=torch.long, device=device
+            )
+            edges_2 = torch.as_tensor(
+                sample_augmented_edges(edge_index_np, edge_drop_prob, numpy_rng),
+                dtype=torch.long, device=device
+            )
+
+            adjacency_1 = normalized_adjacency(edges_1, n_spots, dtype=dtype, device=device)
+            adjacency_2 = normalized_adjacency(edges_2, n_spots, dtype=dtype, device=device)
 
             # Mask features for two views
             masked_1 = mask_features(features, config.mask_rate, torch_generator)
@@ -231,12 +205,7 @@ def fit_phase1(
             z2 = torch.cat(all_emb_2, dim=0)
 
             # Contrastive loss on full graph (no pseudo-label mask)
-            if leaked_pseudo_labels is None:
-                loss = contrastive_loss(z1, z2, edge_index, config.temperature)
-            else:
-                loss = contrastive_loss_masked(
-                    z1, z2, edge_index, leaked_pseudo_labels, config.temperature
-                )
+            loss = contrastive_loss(z1, z2, edge_index, config.temperature)
 
             loss.backward()
             optimizer.step()
