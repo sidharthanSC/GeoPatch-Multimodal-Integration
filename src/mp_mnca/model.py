@@ -394,12 +394,93 @@ def contrastive_loss(
     z1: torch.Tensor,
     z2: torch.Tensor,
     edge_index: torch.Tensor,
+    temperature: float,
+) -> torch.Tensor:
+    """Symmetric neighbor contrastive loss WITHOUT pseudo-label negative masking.
+
+    Positives: same-spot diagonal (inter.diag), spatial kNN neighbors
+    (intra_positive + inter_positive). Negatives: every other spot (no mask).
+    No labels of any kind are used.
+    """
+    first = _directional_loss_no_mask(z1, z2, edge_index, temperature)
+    second = _directional_loss_no_mask(z2, z1, edge_index, temperature)
+    return 0.5 * (first + second).mean()
+
+
+def _directional_loss_no_mask(
+    query: torch.Tensor,
+    other: torch.Tensor,
+    edge_index: torch.Tensor,
+    temperature: float,
+) -> torch.Tensor:
+    query = F.normalize(query, dim=1)
+    other = F.normalize(other, dim=1)
+    intra = torch.exp((query @ query.T) / temperature)
+    inter = torch.exp((query @ other.T) / temperature)
+
+    src, dst = edge_index
+    intra_positive = torch.zeros(query.shape[0], dtype=query.dtype, device=query.device)
+    inter_positive = torch.zeros_like(intra_positive)
+    intra_positive.scatter_add_(0, src, intra[src, dst])
+    inter_positive.scatter_add_(0, src, inter[src, dst])
+    neighbor_count = torch.zeros_like(intra_positive)
+    neighbor_count.scatter_add_(0, src, torch.ones_like(src, dtype=query.dtype))
+
+    numerator = inter.diag() + intra_positive + inter_positive
+    denominator = intra.sum(1) + inter.sum(1) - intra.diag()
+    ratio = numerator / (denominator.clamp_min(torch.finfo(query.dtype).tiny))
+    ratio = ratio / (2 * neighbor_count + 1).clamp_min(1)
+    return -torch.log(ratio.clamp_min(torch.finfo(query.dtype).tiny))
+
+
+def contrastive_loss_masked(
+    z1: torch.Tensor,
+    z2: torch.Tensor,
+    edge_index: torch.Tensor,
     pseudo_labels: torch.Tensor,
     temperature: float,
 ) -> torch.Tensor:
-    """STAIG-style symmetric neighbor contrastive loss."""
-    from src.prior_models.staig.model import neighbor_contrastive_loss
-    return neighbor_contrastive_loss(z1, z2, edge_index, pseudo_labels, temperature)
+    """Symmetric neighbor contrastive loss with a gene-cluster negative mask.
+
+    Same positives as ``contrastive_loss`` (same-spot diagonal + spatial kNN
+    neighbors), but spots sharing a gene-KMeans pseudo-label are excluded from
+    the negatives (STAIG-style debiasing). No ground truth is used.
+    """
+    first = _directional_loss_masked(z1, z2, edge_index, pseudo_labels, temperature)
+    second = _directional_loss_masked(z2, z1, edge_index, pseudo_labels, temperature)
+    return 0.5 * (first + second).mean()
+
+
+def _directional_loss_masked(
+    query: torch.Tensor,
+    other: torch.Tensor,
+    edge_index: torch.Tensor,
+    pseudo_labels: torch.Tensor,
+    temperature: float,
+) -> torch.Tensor:
+    query = F.normalize(query, dim=1)
+    other = F.normalize(other, dim=1)
+    intra = torch.exp((query @ query.T) / temperature)
+    inter = torch.exp((query @ other.T) / temperature)
+    negative_mask = pseudo_labels[:, None] != pseudo_labels[None, :]
+
+    src, dst = edge_index
+    intra_positive = torch.zeros(query.shape[0], dtype=query.dtype, device=query.device)
+    inter_positive = torch.zeros_like(intra_positive)
+    intra_positive.scatter_add_(0, src, intra[src, dst])
+    inter_positive.scatter_add_(0, src, inter[src, dst])
+    neighbor_count = torch.zeros_like(intra_positive)
+    neighbor_count.scatter_add_(0, src, torch.ones_like(src, dtype=query.dtype))
+
+    numerator = inter.diag() + intra_positive + inter_positive
+    denominator = (
+        (intra * negative_mask).sum(1)
+        + (inter * negative_mask).sum(1)
+        - intra.diag()
+    )
+    ratio = numerator / (denominator.clamp_min(torch.finfo(query.dtype).tiny))
+    ratio = ratio / (2 * neighbor_count + 1).clamp_min(1)
+    return -torch.log(ratio.clamp_min(torch.finfo(query.dtype).tiny))
 
 
 class MpMncaContrastiveModel(Module):

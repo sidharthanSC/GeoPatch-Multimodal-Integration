@@ -118,12 +118,14 @@ def plot_section(
     legend: bool = False,
     marker_size: float = 6.0,
     tissue_background: bool = True,
+    title_fontsize: float = 11,
 ) -> None:
     """Scatter spots colored by label using the shared ground-truth color map.
 
     ``marker_size`` is in points^2; larger values give denser, more visible spots.
     ``tissue_background`` draws a light convex-hull fill behind the spots so the
     section outline reads like a tissue impression.
+    ``title_fontsize`` controls the panel heading (e.g. the model name).
     """
     from matplotlib.colors import to_rgba
 
@@ -147,7 +149,7 @@ def plot_section(
         linewidths=0,
         zorder=2,
     )
-    ax.set_title(title, fontsize=11)
+    ax.set_title(title, fontsize=title_fontsize)
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_aspect("equal", adjustable="box")
@@ -273,8 +275,8 @@ def save_subplot(
             title,
             marker_size=8.0,
             tissue_background=True,
+            title_fontsize=18,
         )
-    fig.suptitle(f"{dataset_name} section {section_id} - layer annotations", fontsize=14)
     fig.tight_layout()
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
@@ -316,7 +318,7 @@ def main() -> None:
     parser.add_argument("--dataset-name", default="DLPFC", help="prefix for plot file names")
     parser.add_argument(
         "--output-root",
-        default="layer_annotation_plots",
+        default="analysis/layer_annotation_plots",
         help="folder where per-model folders and subplots/ live",
     )
     args = parser.parse_args()

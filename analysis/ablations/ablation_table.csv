@@ -1,0 +1,11 @@
+model,input_dim_genes,n_sections,mean_refined_ari,mean_refined_nmi,median_refined_ari,median_refined_nmi,iqr_refined_ari,iqr_refined_nmi
+Full MP-MNCA,3000,12,0.783,0.782,0.846,0.807,0.163,0.132
+no_morphology_prior,3000,12,0.745,0.752,0.790,0.823,0.218,0.223
+no_position_bias,3000,12,0.661,0.692,0.742,0.698,0.402,0.281
+gene_only_attention,3000,12,0.681,0.709,0.769,0.723,0.435,0.261
+uniform_knn,3000,12,0.775,0.775,0.785,0.780,0.065,0.057
+embedding_only,3000,12,0.465,0.599,0.470,0.589,0.103,0.064
+contrastive_v3,3000,12,0.272,0.329,0.222,0.317,0.163,0.033
+gene_cosine_v2,3000,12,0.243,0.324,0.222,0.322,0.072,0.026
+byol_v1,3000,1,0.234,0.294,0.234,0.294,0.000,0.000
+STAIG,3000,12,0.507,0.644,0.518,0.674,0.071,0.040

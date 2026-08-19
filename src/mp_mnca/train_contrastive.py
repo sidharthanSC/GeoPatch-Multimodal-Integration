@@ -20,10 +20,11 @@ from src.prior_models.staig.data import (
     sample_augmented_edges,
 )
 from src.prior_models.staig.evaluate import clustering_metrics, refine_labels, tied_gmm
-from src.prior_models.staig.model import mask_features, neighbor_contrastive_loss, normalized_adjacency
+from src.prior_models.staig.model import mask_features, normalized_adjacency
 
 from .config import MpMncaConfig
 from .data import MpMncaSectionData, prepare_image_features, prepare_section
+from .model import contrastive_loss
 from .encoder import MpMncaEncoder, MpMncaOutput
 
 
@@ -88,13 +89,6 @@ def prepare_section_contrastive(
     edge_index = build_spatial_graph(coordinates, n_neighbors)
     edge_probability = image_guided_edge_probabilities(edge_index, image_features)
 
-    # Pseudo labels from image clustering
-    from sklearn.cluster import KMeans
-    pseudo_labels = KMeans(
-        n_clusters=config.image_pseudo_clusters if hasattr(config, 'image_pseudo_clusters') else 40,
-        random_state=0, n_init=10
-    ).fit_predict(image_features).astype(np.int64)
-
     return MpMncaSectionData(
         section_id=section_id,
         gene_expression=features,
@@ -143,11 +137,6 @@ def fit_mp_mnca_contrastive(
     neighbor_genes = features[neighbor_idx]          # (n_spots, n_neighbors, gene_dim)
     neighbor_images = center_image[neighbor_idx]     # (n_spots, n_neighbors, image_dim)
     neighbor_coords = center_coords[neighbor_idx]    # (n_spots, n_neighbors, 2)
-
-    # Pseudo labels for contrastive loss
-    label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
-    pseudo_numeric = np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64)
-    pseudo_labels = torch.as_tensor(pseudo_numeric, dtype=torch.long, device=device)
 
     # STAIG edge index for contrastive loss: build from neighbor_indices
     # neighbor_indices: (n_spots, n_neighbors) -> edge_index: (2, n_spots * n_neighbors)
@@ -227,7 +216,7 @@ def fit_mp_mnca_contrastive(
         z2 = torch.cat(all_emb_2, dim=0)
 
         # Contrastive loss on full graph (STAIG)
-        loss = neighbor_contrastive_loss(z1, z2, edge_index, pseudo_labels, config.temperature)
+        loss = contrastive_loss(z1, z2, edge_index, config.temperature)
 
         loss.backward()
         optimizer.step()

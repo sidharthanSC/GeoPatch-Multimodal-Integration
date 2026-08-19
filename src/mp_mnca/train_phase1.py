@@ -20,10 +20,11 @@ from src.prior_models.staig.data import (
     sample_augmented_edges,
 )
 from src.prior_models.staig.evaluate import clustering_metrics, refine_labels, tied_gmm
-from src.prior_models.staig.model import mask_features, neighbor_contrastive_loss, normalized_adjacency
+from src.prior_models.staig.model import mask_features, normalized_adjacency
 
 from .config import MpMncaConfig
 from .data import MpMncaSectionData, prepare_image_features, prepare_section
+from .model import contrastive_loss
 from .phase1 import Phase1Model, Phase1Output
 
 
@@ -53,13 +54,15 @@ def prepare_section_phase1(
     adata,
     section_id: str,
     config: MpMncaConfig,
-    n_neighbors: int = 6,
+    n_neighbors: int | None = None,
     image_key: str = "img_emb",
     hvg_key: str = "highly_variable",
     use_feat_obsm: bool = True,
 ) -> MpMncaSectionData:
     """Prepare section for Phase 1 (uses raw 3000-dim HVG expression)."""
     from .data import prepare_gene_expression
+    if n_neighbors is None:
+        n_neighbors = config.n_neighbors
     features = prepare_gene_expression(adata, hvg_key, config.gene_dim, use_feat_obsm)
 
     image_features = prepare_image_features(adata, config.image_pca_dim, image_key)
@@ -76,12 +79,6 @@ def prepare_section_phase1(
     # STAIG edge index for contrastive loss
     edge_index = build_spatial_graph(coordinates, n_neighbors)
     edge_probability = image_guided_edge_probabilities(edge_index, image_features)
-
-    # Pseudo labels
-    from sklearn.cluster import KMeans
-    pseudo_labels = KMeans(
-        n_clusters=config.image_pseudo_clusters, random_state=0, n_init=10
-    ).fit_predict(image_features).astype(np.int64)
 
     return MpMncaSectionData(
         section_id=section_id,
@@ -128,11 +125,6 @@ def fit_phase1(
     neighbor_genes = features[neighbor_idx]
     neighbor_images = center_image[neighbor_idx]
     neighbor_coords = center_coords[neighbor_idx]
-
-    # Pseudo labels
-    label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
-    pseudo_numeric = np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64)
-    pseudo_labels = torch.as_tensor(pseudo_numeric, dtype=torch.long, device=device)
 
     # STAIG edge index
     src = np.repeat(np.arange(n_spots), section_data.neighbor_indices.shape[1])
@@ -212,8 +204,8 @@ def fit_phase1(
                 all_emb_2.append(out.spot_embeddings)
             z2 = torch.cat(all_emb_2, dim=0)
 
-            # Contrastive loss on full graph
-            loss = neighbor_contrastive_loss(z1, z2, edge_index, pseudo_labels, config.temperature)
+            # Contrastive loss on full graph (no pseudo-label mask)
+            loss = contrastive_loss(z1, z2, edge_index, config.temperature)
 
             loss.backward()
             optimizer.step()
