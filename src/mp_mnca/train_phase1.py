@@ -14,13 +14,8 @@ import numpy as np
 import torch
 
 from src.datasets.dlpfc import DlpfcDataset
-from src.prior_models.staig.data import (
-    build_spatial_graph,
-    image_guided_edge_probabilities,
-    sample_augmented_edges,
-)
 from src.prior_models.staig.evaluate import clustering_metrics, refine_labels, tied_gmm
-from src.prior_models.staig.model import mask_features, neighbor_contrastive_loss, normalized_adjacency
+from src.prior_models.staig.model import mask_features, neighbor_contrastive_loss
 
 from .config import MpMncaConfig
 from .data import MpMncaSectionData, prepare_image_features, prepare_section
@@ -73,15 +68,12 @@ def prepare_section_phase1(
     _, indices = finder.kneighbors(coordinates)
     neighbor_indices = indices[:, 1:]
 
-    # STAIG edge index for contrastive loss
-    edge_index = build_spatial_graph(coordinates, n_neighbors)
-    edge_probability = image_guided_edge_probabilities(edge_index, image_features)
-
-    # Pseudo labels
-    from sklearn.cluster import KMeans
-    pseudo_labels = KMeans(
-        n_clusters=config.image_pseudo_clusters, random_state=0, n_init=10
-    ).fit_predict(image_features).astype(np.int64)
+    # Earlier revisions also built a STAIG edge index, image-guided edge-drop
+    # probabilities, and KMeans image pseudo-labels here, then dropped all three on
+    # the floor -- MpMncaSectionData has no field for any of them. The discarded
+    # pseudo-labels are the important one: they are exactly the unsupervised labels
+    # STAIG uses, and their absence is why fit_phase1 fell back to ground truth.
+    # fit_phase1 now derives them itself; see its pseudo_label_source argument.
 
     return MpMncaSectionData(
         section_id=section_id,
@@ -100,8 +92,23 @@ def fit_phase1(
     section_data: MpMncaSectionData,
     config: MpMncaConfig,
     device: torch.device | str | None = None,
+    pseudo_label_source: str = "image_kmeans",
 ) -> Phase1Result:
-    """Fit Phase 1 with STAIG-style contrastive loss on 3000-dim embeddings."""
+    """Fit Phase 1 with STAIG-style contrastive loss on 3000-dim embeddings.
+
+    ``pseudo_label_source`` selects what defines the contrastive negative mask
+    (``staig/model.py`` excludes same-pseudo-label spots from the denominator):
+
+    - ``"image_kmeans"`` (default): KMeans over image PCA features, exactly as STAIG
+      derives its pseudo-labels. Fully unsupervised.
+    - ``"ground_truth"``: the ``ground_truth`` cortical layer. **This leaks the
+      evaluation label into training** -- the loss is never asked to separate two
+      spots that share a layer, making the objective supervised contrastive learning
+      on the metric being reported. It was the unconditional behavior of this
+      function when the 0.824 mean refined ARI figure in ``results/`` was produced,
+      so that figure is not comparable to STAIG's unsupervised 0.507. Retained only
+      so the leak can be measured against the corrected default.
+    """
     _set_seed(config.seed)
     device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
     dtype = torch.float32 if config.dtype == "float32" else torch.float64
@@ -125,13 +132,27 @@ def fit_phase1(
     center_coords = torch.as_tensor(section_data.coordinates, dtype=dtype, device=device)
     neighbor_idx = torch.as_tensor(section_data.neighbor_indices, dtype=torch.long, device=device)
 
-    neighbor_genes = features[neighbor_idx]
+    # Neighbour gene expression is NOT materialized here: the training loop indexes
+    # the masked views directly (masked_1[neighbor_idx[...]]) and evaluation indexes
+    # `features`, so a precomputed (n_spots, n_neighbors, gene_dim) copy would be
+    # ~300 MB of dead weight -- enough to push parallel runs into swap.
     neighbor_images = center_image[neighbor_idx]
     neighbor_coords = center_coords[neighbor_idx]
 
-    # Pseudo labels
-    label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
-    pseudo_numeric = np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64)
+    # Pseudo labels -- see the docstring; only "image_kmeans" is label-free.
+    if pseudo_label_source == "image_kmeans":
+        from sklearn.cluster import KMeans
+
+        pseudo_numeric = (
+            KMeans(n_clusters=config.image_pseudo_clusters, random_state=0, n_init=10)
+            .fit_predict(section_data.image_features)
+            .astype(np.int64)
+        )
+    elif pseudo_label_source == "ground_truth":
+        label_to_idx = {label: i for i, label in enumerate(np.unique(section_data.labels))}
+        pseudo_numeric = np.array([label_to_idx[l] for l in section_data.labels], dtype=np.int64)
+    else:
+        raise ValueError(f"unknown pseudo_label_source: {pseudo_label_source!r}")
     pseudo_labels = torch.as_tensor(pseudo_numeric, dtype=torch.long, device=device)
 
     # STAIG edge index
@@ -139,8 +160,6 @@ def fit_phase1(
     dst = section_data.neighbor_indices.ravel()
     edge_index_np = np.stack([src, dst], axis=0).astype(np.int64)
     edge_index = torch.as_tensor(edge_index_np, dtype=torch.long, device=device)
-
-    edge_drop_prob = np.ones(edge_index_np.shape[1]) * 0.1
 
     batch_size = config.batch_size
     n_batches = (n_spots + batch_size - 1) // batch_size
@@ -159,18 +178,14 @@ def fit_phase1(
 
             optimizer.zero_grad(set_to_none=True)
 
-            # Two augmented views
-            edges_1 = torch.as_tensor(
-                sample_augmented_edges(edge_index_np, edge_drop_prob, numpy_rng),
-                dtype=torch.long, device=device
-            )
-            edges_2 = torch.as_tensor(
-                sample_augmented_edges(edge_index_np, edge_drop_prob, numpy_rng),
-                dtype=torch.long, device=device
-            )
-
-            adjacency_1 = normalized_adjacency(edges_1, n_spots, dtype=dtype, device=device)
-            adjacency_2 = normalized_adjacency(edges_2, n_spots, dtype=dtype, device=device)
+            # NOTE: STAIG's image-guided edge dropping is deliberately absent here.
+            # Earlier revisions sampled augmented edges and built normalized
+            # adjacencies at this point, but Phase1Model takes no adjacency argument,
+            # so those tensors never reached the loss -- the "continuous attention
+            # replaces binary edge dropping" claim in results/ described a mechanism
+            # the objective never saw. Removed rather than wired up, to keep this
+            # function's behaviour identical to the runs being measured. The only
+            # graph augmentation actually in effect is the feature masking below.
 
             # Mask features for two views
             masked_1 = mask_features(features, config.mask_rate, torch_generator)
