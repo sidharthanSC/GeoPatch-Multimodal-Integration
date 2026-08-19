@@ -14,8 +14,9 @@ import numpy as np
 import torch
 
 from src.datasets.dlpfc import DlpfcDataset
+from src.prior_models.staig.data import build_spatial_graph, image_guided_edge_probabilities
 from src.prior_models.staig.evaluate import clustering_metrics, refine_labels, tied_gmm
-from src.prior_models.staig.model import mask_features, normalized_adjacency
+from src.prior_models.staig.model import mask_features
 
 from .config import MpMncaConfig
 from .data import MpMncaSectionData, prepare_image_features, prepare_section
