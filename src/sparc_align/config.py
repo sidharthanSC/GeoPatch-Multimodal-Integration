@@ -26,6 +26,16 @@ class SparcConfig:
     image_dim: int = 128
     standardize_streams: bool = True
 
+    # Denoising augmentation, borrowed from MP-MNCA's masked two-view training.
+    # MP-MNCA masks whole gene COLUMNS (the same genes zeroed for every spot in a
+    # view) at rate 0.1 and trains a contrastive objective over two such views.
+    # SPARC's objective is reconstruction, so the faithful translation is denoising:
+    # the encoder sees the masked vector, the NMSE target stays the clean one.
+    # 0.0 disables it, which is the published SPARC configuration -- stage 1
+    # currently has no input augmentation of any kind, which is the likely source of
+    # its epoch-to-epoch instability (support ARI swinging 0.17->0.42->0.16->0.46).
+    input_mask_rate: float = 0.0
+
     # --- Sparse dictionary ---------------------------------------------------
     # DEVIATION: paper uses L=8192, k=64 over 1.7M Open Images samples. A DLPFC
     # section has ~3.5-4.2k spots, so an 8192-latent dictionary is wildly

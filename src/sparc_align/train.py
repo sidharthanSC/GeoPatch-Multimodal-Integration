@@ -57,6 +57,24 @@ def _set_seed(seed: int) -> None:
     torch.use_deterministic_algorithms(True)
 
 
+def mask_columns(
+    batch: dict[str, torch.Tensor], rate: float, generator: torch.Generator
+) -> dict[str, torch.Tensor]:
+    """Zero whole feature columns, matching MP-MNCA/STAIG's mask_features().
+
+    Column-wise rather than element-wise: the same features are dropped for every
+    spot in the batch, which removes a coherent slice of signal instead of adding
+    iid noise, and is what the reference implementations do.
+    """
+    masked = {}
+    for name, tensor in batch.items():
+        drop = torch.rand(tensor.shape[1], generator=generator, device=tensor.device) < rate
+        view = tensor.clone()
+        view[:, drop] = 0
+        masked[name] = view
+    return masked
+
+
 def _neighbor_batch(
     streams: dict[str, torch.Tensor], neighbor_idx: torch.Tensor, index: torch.Tensor
 ) -> dict[str, torch.Tensor]:
@@ -147,6 +165,7 @@ def fit_sparc(
     )
 
     rng = np.random.default_rng(config.seed)
+    mask_generator = torch.Generator(device=device).manual_seed(config.seed)
     indices = np.arange(n_spots)
     losses: list[dict[str, float]] = []
 
@@ -161,11 +180,29 @@ def fit_sparc(
             batch_idx = torch.as_tensor(indices[start:end], dtype=torch.long, device=device)
             batch = {name: tensor[batch_idx] for name, tensor in streams.items()}
             spatial = config.spatial_topk_weight > 0.0
-            neighbors = _neighbor_batch(streams, neighbor_idx, batch_idx) if spatial else None
             similarity = neighbor_similarity[batch_idx] if spatial else None
 
             optimizer.zero_grad(set_to_none=True)
-            output = model(batch, neighbors, similarity)
+            # Denoising: encode the masked view, but score reconstruction against the
+            # clean batch, so the model must recover what was removed.
+            #
+            # The neighbour tokens are drawn from the SAME masked view as the centre,
+            # not from the clean streams. Masking is column-wise, so a mixed pair
+            # would have the centre missing genes its neighbours still carry -- the
+            # spatial-TopK selection logits would then compare vectors living in
+            # different feature spaces. MP-MNCA masks centre and neighbours together
+            # for the same reason.
+            if config.input_mask_rate > 0.0:
+                masked_streams = mask_columns(streams, config.input_mask_rate, mask_generator)
+                encoder_input = {name: t[batch_idx] for name, t in masked_streams.items()}
+                neighbors = (
+                    _neighbor_batch(masked_streams, neighbor_idx, batch_idx) if spatial else None
+                )
+            else:
+                encoder_input = batch
+                neighbors = _neighbor_batch(streams, neighbor_idx, batch_idx) if spatial else None
+
+            output = model(encoder_input, neighbors, similarity)
             loss_dict = model.compute_losses(batch, output)
             loss_dict["total"].backward()
             model.pre_step()  # project decoder gradients off the unit sphere normal
