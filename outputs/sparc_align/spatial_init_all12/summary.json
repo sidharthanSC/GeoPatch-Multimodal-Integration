@@ -1,0 +1,30 @@
+{
+  "arms": [
+    "after"
+  ],
+  "sections": [
+    "151507",
+    "151508",
+    "151509",
+    "151510",
+    "151669",
+    "151670",
+    "151671",
+    "151672",
+    "151673",
+    "151674",
+    "151675",
+    "151676"
+  ],
+  "epochs": 50,
+  "alpha": 0.5,
+  "beta": 1.0,
+  "base_config": {
+    "n_latents": 1024,
+    "k_active": 128,
+    "spatial_topk_weight": 0.75,
+    "spatial_attention": true,
+    "attention_epochs": 20
+  },
+  "n_rows": 36
+}

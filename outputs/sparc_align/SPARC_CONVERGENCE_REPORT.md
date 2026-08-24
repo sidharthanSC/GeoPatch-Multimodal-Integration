@@ -108,6 +108,22 @@ Total spread across the whole 16x batch range is 0.0404 ARI. For scale, the mean
 
 Per-section best batch size: 32: 7, 64: 1, 256: 2, 512: 2. The lean toward 32 is worth noting as a weak signal — if anything it suggests smaller batches, i.e. more gradient steps per epoch, help slightly at this dataset scale — but it should not be reported as a result on this evidence.
 
+## Spatial k-NN smoothing: before vs after alignment
+
+SPARC uses the spatial graph only to choose *which* latents activate. This tests pushing it further: smoothing the gene and image streams over the k=6 graph **before** encoding (what STAIG/GraphST do implicitly via graph convolution), versus smoothing the latent code **after** SPARC but before stage 2. Morphology kernel `softmax(beta*log s_ij)`, alpha=0.5, 12 sections at 50 epochs.
+
+| Arm | Mean refined ARI | Median | vs baseline | Wins | Wilcoxon p |
+|---|---|---|---|---|---|
+| baseline | 0.3740 | 0.3681 | — | — | — |
+| before | 0.4061 | 0.4154 | +0.0320 | 8/12 | 0.23 |
+| after | 0.3856 | 0.3833 | +0.0116 | 8/12 | 0.62 |
+
+**Before beats after** — roughly triple the mean gain (+0.0320 vs +0.0116) and the better median. That fits the mechanism: `after` is largely redundant because stage 2's cross-attention already aggregates over the same graph, whereas `before` changes what SPARC actually encodes.
+
+**But it is not a significant improvement.** Wilcoxon p=0.23 at n=12, and the per-section spread is severe: 151671 gains +0.2068 while 151508 loses -0.1051, with 4 of 12 sections getting worse. The mean gain rests on three large winners.
+
+It also does not close the gap: 0.4061 against MP-MNCA's 0.5195 and STAIG's 0.4730-0.5092. Recommended as the better of the two placements and worth keeping, but not reportable as an improvement on this evidence.
+
 ## Figures
 
 - `convergence_all12/figures/convergence_per_section_ari.png` — one panel per section

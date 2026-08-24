@@ -153,14 +153,58 @@ def plot_batch(rows, out_dir: Path, metric="ari", label="refined ARI"):
     return path
 
 
+def plot_spatial_init(rows, out_dir: Path, metric="ari", label="refined ARI"):
+    """Paired per-section comparison of spatial-smoothing placement."""
+    from collections import defaultdict as _dd
+
+    by = _dd(dict)
+    for r in rows:
+        by[r["section_id"]][r["arm"]] = float(r[metric])
+    sections = sorted(by)
+    arms = ["baseline", "before", "after"]
+    x = np.arange(len(sections))
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.5),
+                                   gridspec_kw={"width_ratios": [2.4, 1]})
+    width = 0.27
+    for i, arm in enumerate(arms):
+        ax1.bar(x + (i - 1) * width, [by[s][arm] for s in sections], width,
+                color=PALETTE[i], label=arm, alpha=0.9)
+    _style(ax1, "section", label, "per section")
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(sections, rotation=45, ha="right", fontsize=8)
+    ax1.legend(frameon=False, fontsize=9)
+
+    # Paired deltas make the heterogeneity legible in a way means hide.
+    deltas = [by[s]["before"] - by[s]["baseline"] for s in sections]
+    colors = [PALETTE[2] if d > 0 else PALETTE[1] for d in deltas]
+    ax2.barh(x, deltas, color=colors, alpha=0.9)
+    ax2.axvline(0, color="0.3", linewidth=0.9)
+    ax2.axvline(float(np.mean(deltas)), color=PALETTE[0], linestyle="--", linewidth=1.2,
+                label=f"mean {np.mean(deltas):+.4f}")
+    _style(ax2, f"{label} change", "", "before − baseline")
+    ax2.set_yticks(x)
+    ax2.set_yticklabels(sections, fontsize=8)
+    ax2.legend(frameon=False, fontsize=9)
+
+    fig.suptitle("SPARC-align: spatial k-NN smoothing before vs after alignment", fontsize=13)
+    fig.tight_layout(rect=[0, 0, 1, 0.94])
+    path = out_dir / f"spatial_init_{metric}.png"
+    fig.savefig(path, dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--study", choices=["convergence", "batch"], default="convergence")
+    parser.add_argument("--study", choices=["convergence", "batch", "spatial_init"], default="convergence")
     parser.add_argument("--run", default=None)
     parser.add_argument("--metric", default="ari", choices=["ari", "nmi"])
     args = parser.parse_args()
 
-    run = args.run or ("convergence_all12" if args.study == "convergence" else "batch_size_all12")
+    default_run = {"convergence": "convergence_all12", "batch": "batch_size_all12",
+                   "spatial_init": "spatial_init_all12"}[args.study]
+    run = args.run or default_run
     base = Path("outputs/sparc_align") / run
     out_dir = base / "figures"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -170,9 +214,12 @@ def main() -> None:
         rows = _read(base / "convergence_metrics.csv")
         print(plot_per_section(rows, out_dir, args.metric, label))
         print(plot_mean(rows, out_dir, args.metric, label))
-    else:
+    elif args.study == "batch":
         rows = _read(base / "batch_metrics.csv")
         print(plot_batch(rows, out_dir, args.metric, label))
+    else:
+        rows = _read(base / "spatial_init_metrics.csv")
+        print(plot_spatial_init(rows, out_dir, args.metric, label))
 
 
 if __name__ == "__main__":

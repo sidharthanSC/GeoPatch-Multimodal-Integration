@@ -246,6 +246,60 @@ def build_report(conv_run: str, batch_run: str | None, out_path: Path) -> Path:
             "",
         ]
 
+    spatial = base / "spatial_init_all12" / "spatial_init_metrics.csv"
+    if spatial.exists():
+        from scipy import stats as _st
+
+        srows = _read(spatial)
+        sby = defaultdict(dict)
+        for r in srows:
+            sby[r["section_id"]][r["arm"]] = float(r["ari"])
+        ssecs = sorted(sby)
+        arr = {a: np.array([sby[s][a] for s in ssecs]) for a in ("baseline", "before", "after")}
+        parts += [
+            "## Spatial k-NN smoothing: before vs after alignment",
+            "",
+            "SPARC uses the spatial graph only to choose *which* latents activate. This tests "
+            "pushing it further: smoothing the gene and image streams over the k=6 graph "
+            "**before** encoding (what STAIG/GraphST do implicitly via graph convolution), "
+            "versus smoothing the latent code **after** SPARC but before stage 2. Morphology "
+            f"kernel `softmax(beta*log s_ij)`, alpha=0.5, {len(ssecs)} sections at 50 epochs.",
+            "",
+            "| Arm | Mean refined ARI | Median | vs baseline | Wins | Wilcoxon p |",
+            "|---|---|---|---|---|---|",
+        ]
+        for a in ("baseline", "before", "after"):
+            if a == "baseline":
+                parts.append(f"| baseline | {arr[a].mean():.4f} | {np.median(arr[a]):.4f} | — | — | — |")
+            else:
+                d = arr[a] - arr["baseline"]
+                pv = _st.wilcoxon(arr[a], arr["baseline"]).pvalue
+                parts.append(
+                    f"| {a} | {arr[a].mean():.4f} | {np.median(arr[a]):.4f} | "
+                    f"{d.mean():+.4f} | {int((d > 0).sum())}/{len(ssecs)} | {pv:.2f} |"
+                )
+        db = arr["before"] - arr["baseline"]
+        parts += [
+            "",
+            f"**Before beats after** — roughly triple the mean gain "
+            f"({db.mean():+.4f} vs {(arr['after'] - arr['baseline']).mean():+.4f}) and the "
+            "better median. That fits the mechanism: `after` is largely redundant because "
+            "stage 2's cross-attention already aggregates over the same graph, whereas "
+            "`before` changes what SPARC actually encodes.",
+            "",
+            f"**But it is not a significant improvement.** Wilcoxon "
+            f"p={_st.wilcoxon(arr['before'], arr['baseline']).pvalue:.2f} at n={len(ssecs)}, and the "
+            f"per-section spread is severe: 151671 gains {sby['151671']['before'] - sby['151671']['baseline']:+.4f} "
+            f"while 151508 loses {sby['151508']['before'] - sby['151508']['baseline']:+.4f}, with "
+            f"{int((db < 0).sum())} of {len(ssecs)} sections getting worse. The mean gain rests on "
+            "three large winners.",
+            "",
+            f"It also does not close the gap: {arr['before'].mean():.4f} against MP-MNCA's 0.5195 "
+            "and STAIG's 0.4730-0.5092. Recommended as the better of the two placements and "
+            "worth keeping, but not reportable as an improvement on this evidence.",
+            "",
+        ]
+
     parts += [
         "## Figures",
         "",
