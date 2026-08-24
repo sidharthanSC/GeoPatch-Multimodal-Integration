@@ -32,6 +32,11 @@ outputs/**
 # sweep scripts that produced them, and the stdout of the long runs (~108 KB).
 !outputs/**/*.py
 !outputs/**/*.log
+# Figures are the deliverable of the plotting modules and small enough to track
+# (~2.9 MB total); the .npz/.pt arrays behind them stay ignored and regenerable.
+!outputs/**/*.png
+# Prepared-section cache: 219 MB of .npz rebuilt by convergence.cache_sections().
+outputs/sparc_align/_prepared_sections/
 # Legacy per-spot k-NN dumps (~18 MB): row-per-spot intermediates, not results.
 outputs/analysis/*knn_predictions_full.csv
 outputs/analysis/*changed_spots.csv

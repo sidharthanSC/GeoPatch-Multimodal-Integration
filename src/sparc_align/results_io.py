@@ -32,11 +32,18 @@ class IncrementalCsv:
     schemas by hand after a crash.
     """
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, resume: bool = False) -> None:
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.rows: list[dict[str, Any]] = []
         self.fieldnames: list[str] = []
+        if resume and path.exists():
+            # Without this, a restarted run begins with an empty row list and the
+            # first flush overwrites everything the previous process completed.
+            with path.open(encoding="utf-8") as handle:
+                self.rows = [dict(r) for r in csv.DictReader(handle)]
+            if self.rows:
+                self.fieldnames = sorted({k for row in self.rows for k in row})
 
     def append(self, row: dict[str, Any]) -> None:
         self.rows.append(row)

@@ -111,8 +111,17 @@ def fit_sparc(
     config: SparcConfig,
     device: torch.device | str | None = None,
     verbose: bool = True,
+    eval_epochs: tuple[int, ...] = (),
+    on_checkpoint=None,
 ) -> SparcResult:
-    """Train SPARC on one section and evaluate through the MP-MNCA protocol."""
+    """Train SPARC on one section and evaluate through the MP-MNCA protocol.
+
+    ``eval_epochs`` requests mid-training evaluation at those epoch numbers, so one
+    200-epoch run yields the whole convergence curve instead of five separate runs
+    (which would each restart from scratch and not be points on a single trajectory).
+    ``on_checkpoint(epoch, latents, self_nmse, cross_nmse)`` is called at each, and
+    training resumes from the same optimizer state afterwards.
+    """
     _set_seed(config.seed)
     device = torch.device(device or "cpu")
     dtype = torch.float32 if config.dtype == "float32" else torch.float64
@@ -172,6 +181,12 @@ def fit_sparc(
             totals[key] /= n_spots
         totals["revived_latents"] = float(n_revived)
         losses.append(totals)
+
+        if eval_epochs and epoch in eval_epochs and on_checkpoint is not None:
+            # encode_all flips the model to eval(); restore train mode after.
+            snapshot = encode_all(model, streams, config.batch_size, neighbor_idx, neighbor_similarity)
+            on_checkpoint(epoch, *snapshot)
+            model.train()
 
         if verbose and (epoch == 1 or epoch % 10 == 0 or epoch == config.epochs):
             print(

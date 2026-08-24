@@ -69,29 +69,12 @@ def _directional_neighbor_loss(
     negative_mask = pseudo_labels[:, None] != pseudo_labels[None, :]
 
     src, dst = edge_index
-    # Sum each node's incident-edge terms via a dense edge mask rather than
-    # scatter_add_. The two are identical for a graph whose (src, dst) pairs are
-    # unique -- scatter-add over edges is exactly the row-sum of the masked
-    # adjacency -- and every call site here builds edges from a k-NN graph or an
-    # edge-dropped subset of one, so pairs are unique by construction (verified:
-    # 0 duplicates and 0 self-loops on both the STAIG and MP-MNCA paths).
-    #
-    # The reason for the substitution is that scatter_add_'s backward has no
-    # deterministic MPS kernel (scatter_reduce_mps), which collides with the
-    # repo-wide torch.use_deterministic_algorithms(True) and forced this loss --
-    # and everything built on it -- onto CPU. The mask carries no gradient, so it
-    # is built under no_grad; only intra/inter are differentiated. Peak memory is
-    # unchanged, since (intra * negative_mask) below already materializes an
-    # (n, n) tensor.
-    with torch.no_grad():
-        edge_mask = torch.zeros(
-            query.shape[0], query.shape[0], dtype=torch.bool, device=query.device
-        )
-        edge_mask[src, dst] = True
-        mask = edge_mask.to(query.dtype)
-    intra_positive = (intra * mask).sum(dim=1)
-    inter_positive = (inter * mask).sum(dim=1)
-    neighbor_count = mask.sum(dim=1)
+    intra_positive = torch.zeros(query.shape[0], dtype=query.dtype, device=query.device)
+    inter_positive = torch.zeros_like(intra_positive)
+    intra_positive.scatter_add_(0, src, intra[src, dst])
+    inter_positive.scatter_add_(0, src, inter[src, dst])
+    neighbor_count = torch.zeros_like(intra_positive)
+    neighbor_count.scatter_add_(0, src, torch.ones_like(src, dtype=query.dtype))
 
     numerator = inter.diag() + intra_positive + inter_positive
     denominator = (
