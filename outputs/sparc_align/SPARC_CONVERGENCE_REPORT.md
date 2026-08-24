@@ -117,10 +117,26 @@ Per-section best batch size: 32: 7, 64: 1, 256: 2, 512: 2. The lean toward 32 is
 
 ## Reproduce
 
+Both studies build a prepared-section cache on first use (~219 MB, git-ignored) so no study process pays the ~4 GB `dlpfc.pkl` load.
+
 ```bash
-python -m src.sparc_align.convergence --study convergence --save-predictions 151507
-python -m src.sparc_align.convergence --study batch --epochs 200
-python -m src.sparc_align.plots --study convergence
-python -m src.sparc_align.plots --study batch
+# Convergence: one 200-epoch run per section, scored at each checkpoint (~55 min)
+python -m src.sparc_align.convergence --study convergence \
+    --name convergence_all12 --save-predictions 151507
+
+# Batch sweep, one size per process. Splitting this way keeps peak memory low
+# enough to survive a 16 GB machine; a single process running all five was
+# OOM-killed. Results resume automatically, so an eviction costs only the
+# in-flight size rather than the whole sweep.
+for bs in 32 64 128 256 512; do
+    python -m src.sparc_align.convergence --study batch \
+        --name batch_size_all12 --epochs 50 --batch-sizes $bs
+done
+
+# Figures and report
+python -m src.sparc_align.plots --study convergence --metric ari
+python -m src.sparc_align.plots --study convergence --metric nmi
+python -m src.sparc_align.plots --study batch --metric ari
 python -m src.sparc_align.annotation_plots --section-id 151507
+python -m src.sparc_align.report
 ```

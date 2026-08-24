@@ -214,6 +214,12 @@ def main() -> None:
     parser.add_argument("--device", default="mps")
     parser.add_argument("--attention-device", default="cpu")
     parser.add_argument("--epochs", type=int, default=200, help="batch study only")
+    parser.add_argument(
+        "--batch-sizes", nargs="*", type=int, default=None,
+        help="batch study only; defaults to BATCH_SIZES. Pass a single size to run one "
+             "per process, which is how the committed sweep was produced -- it keeps peak "
+             "memory low enough to survive on a 16 GB machine.",
+    )
     parser.add_argument("--no-stage2", action="store_true")
     parser.add_argument(
         "--save-predictions", nargs="*", default=["151507"],
@@ -221,8 +227,16 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    dataset = DlpfcDataset.from_checkpoint(args.checkpoint_path)
-    sections = args.sections or dataset.section_ids()
+    # Build the prepared-section cache first. Idempotent (existing sections are
+    # skipped), and it is what lets every study process avoid the ~4 GB dlpfc.pkl
+    # load. run_batch_study reads exclusively from this cache, so without it the
+    # batch study fails with FileNotFoundError.
+    probe = SparcConfig(**BEST, epochs=max(EVAL_EPOCHS))
+    cached = cache_sections(args.checkpoint_path, probe, args.sections)
+    sections = args.sections or cached
+    dataset = None
+    if args.study == "convergence":
+        dataset = DlpfcDataset.from_checkpoint(args.checkpoint_path)
     name = args.name or (
         "convergence_all12" if args.study == "convergence" else "batch_size_all12"
     )
@@ -234,6 +248,9 @@ def main() -> None:
         )
         meta = {"eval_epochs": list(EVAL_EPOCHS)}
     else:
+        global BATCH_SIZES
+        if args.batch_sizes:
+            BATCH_SIZES = tuple(args.batch_sizes)
         rows = run_batch_study(
             dataset, sections, name, args.device, args.attention_device,
             args.epochs, not args.no_stage2,

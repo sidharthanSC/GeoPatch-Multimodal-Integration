@@ -255,13 +255,31 @@ def build_report(conv_run: str, batch_run: str | None, out_path: Path) -> Path:
     ]
     if batch_run:
         parts.append(f"- `{batch_run}/figures/batch_size_ari.png` — batch-size effect")
-    parts += ["", "## Reproduce", "", "```bash",
-              "python -m src.sparc_align.convergence --study convergence --save-predictions 151507",
-              f"python -m src.sparc_align.convergence --study batch --epochs {best_epoch}",
-              "python -m src.sparc_align.plots --study convergence",
-              "python -m src.sparc_align.plots --study batch",
-              "python -m src.sparc_align.annotation_plots --section-id 151507",
-              "```", ""]
+    parts += [
+        "", "## Reproduce", "",
+        "Both studies build a prepared-section cache on first use (~219 MB, git-ignored) so "
+        "no study process pays the ~4 GB `dlpfc.pkl` load.",
+        "", "```bash",
+        "# Convergence: one 200-epoch run per section, scored at each checkpoint (~55 min)",
+        "python -m src.sparc_align.convergence --study convergence \\",
+        "    --name convergence_all12 --save-predictions 151507",
+        "",
+        "# Batch sweep, one size per process. Splitting this way keeps peak memory low",
+        "# enough to survive a 16 GB machine; a single process running all five was",
+        "# OOM-killed. Results resume automatically, so an eviction costs only the",
+        "# in-flight size rather than the whole sweep.",
+        "for bs in 32 64 128 256 512; do",
+        "    python -m src.sparc_align.convergence --study batch \\",
+        f"        --name batch_size_all12 --epochs {epochs[epochs.index(50)]} --batch-sizes $bs",
+        "done",
+        "",
+        "# Figures and report",
+        "python -m src.sparc_align.plots --study convergence --metric ari",
+        "python -m src.sparc_align.plots --study convergence --metric nmi",
+        "python -m src.sparc_align.plots --study batch --metric ari",
+        "python -m src.sparc_align.annotation_plots --section-id 151507",
+        "python -m src.sparc_align.report",
+        "```", ""]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text("\n".join(parts), encoding="utf-8")
