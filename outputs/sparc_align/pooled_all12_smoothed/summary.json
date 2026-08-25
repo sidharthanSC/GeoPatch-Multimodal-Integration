@@ -1,0 +1,29 @@
+{
+  "sections": [
+    "151507",
+    "151508",
+    "151509",
+    "151510",
+    "151669",
+    "151670",
+    "151671",
+    "151672",
+    "151673",
+    "151674",
+    "151675",
+    "151676"
+  ],
+  "epochs": 50,
+  "smooth_alpha": 0.5,
+  "batch_correct": true,
+  "base_config": {
+    "n_latents": 1024,
+    "k_active": 128,
+    "spatial_topk_weight": 0.75,
+    "spatial_attention": true,
+    "attention_epochs": 20
+  },
+  "pooled_self_nmse_gene": 0.8721651186814179,
+  "mean_ari": 0.39465805226075285,
+  "median_ari": 0.3805213922905545
+}

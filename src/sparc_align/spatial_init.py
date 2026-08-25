@@ -5,7 +5,11 @@ smooths the logits that decide *which* latents activate. The inputs, the
 reconstruction targets and the latent values all remain strictly per-spot. This module
 tests pushing spatial information further, in the two places it could go:
 
-- **before**: smooth the gene and image streams, then run SPARC on the smoothed data.
+All arms build on ablation arm ``n_spatial_attention_plus_stage2`` -- the winner of
+the 14-arm ablation (spatial_topk_weight=0.75, spatial_attention=True, both phases,
+0.3740 mean refined ARI). They differ only in where the k-NN smoothing is applied:
+
+- **input_smoothing**: smooth the gene and image streams, then run SPARC on them.
   This is what STAIG and GraphST do implicitly through graph convolution. It targets
   the measured bottleneck -- gene self-NMSE sits at ~0.88, so a linear encoder cannot
   fit raw expression, and raising the stream's signal-to-noise should make it more
@@ -14,7 +18,8 @@ tests pushing spatial information further, in the two places it could go:
   reconstructs whatever it is fed, so "faithfulness" now means faithfulness to the
   denoised signal, not the raw spot.
 
-- **after**: leave SPARC untouched and smooth the latent code before stage 2. Keeps
+- **latent_smoothing**: leave SPARC untouched and smooth the latent code before
+  stage 2. Keeps
   per-spot reconstruction honest, but may be redundant since stage 2's cross-attention
   already aggregates over the same k=6 graph.
 
@@ -22,7 +27,7 @@ Both use the morphology kernel already validated in the ablations,
 ``w_ij = softmax(beta * log s_ij)`` over image-PCA cosine similarity, so
 morphologically dissimilar neighbours contribute less and boundaries blur less.
 
-    python -m src.sparc_align.spatial_init --arms baseline before after
+    python -m src.sparc_align.spatial_init --arms base input_smoothing latent_smoothing
 """
 
 from __future__ import annotations
@@ -83,13 +88,13 @@ def run_arm(arm: str, section_id: str, config: SparcConfig, device: str, attenti
     from .attention_stage import fit_attention_stage
 
     data = load_cached_section(section_id)
-    if arm == "before":
+    if arm == "input_smoothing":
         data = smooth_streams(data, SMOOTH_ALPHA)
 
     result = fit_sparc(data, config, device=device, verbose=False)
     latents = result.latents
 
-    if arm == "after":
+    if arm == "latent_smoothing":
         weights = neighbour_weights(data.neighbor_image_similarity)
         latents = {
             name: smooth_matrix(value, data.neighbor_indices, weights, SMOOTH_ALPHA)
@@ -126,23 +131,53 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint-path", type=Path, default=Path("checkpoints/dlpfc.pkl"))
     parser.add_argument("--name", default="spatial_init_all12")
-    parser.add_argument("--arms", nargs="*", default=["baseline", "before", "after"])
+    parser.add_argument(
+        "--arms", nargs="*", default=["base", "input_smoothing", "latent_smoothing"],
+        help="all arms build on ablation arm n (n_spatial_attention_plus_stage2): "
+             "spatial_topk_weight=0.75, spatial_attention=True, both phases. "
+             "'base' is arm n unchanged; 'input_smoothing' smooths the streams before "
+             "phase 1; 'latent_smoothing' smooths the latents between phase 1 and 2.",
+    )
     parser.add_argument("--sections", nargs="*")
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--device", default="mps")
     parser.add_argument("--attention-device", default="cpu")
     parser.add_argument("--alpha", type=float, default=SMOOTH_ALPHA)
+    parser.add_argument(
+        "--encoder-hidden", type=int, default=None,
+        help="nonlinear encoder hidden width; None = affine (paper). The 50-epoch "
+             "arms that tested this had WORSE reconstruction the bigger they got "
+             "(0.850 affine -> 0.929 at 2048), i.e. undertrained, so they never got "
+             "a fair test.",
+    )
+    parser.add_argument(
+        "--mask-rate", type=float, default=0.0,
+        help="denoising mask rate for stage 1 (MP-MNCA uses 0.1). 0 = published SPARC.",
+    )
     args = parser.parse_args()
 
     SMOOTH_ALPHA = args.alpha
-    config = SparcConfig(**BEST, epochs=args.epochs)
+    config = SparcConfig(
+        **BEST, epochs=args.epochs, input_mask_rate=args.mask_rate,
+        encoder_hidden_dim=args.encoder_hidden,
+    )
     sections = args.sections or cache_sections(args.checkpoint_path, config)
     directory = results_dir(args.name)
     writer = IncrementalCsv(directory / "spatial_init_metrics.csv", resume=True)
 
+    # Skip (arm, section) pairs already on disk. The writer resumes prior rows, but
+    # without this a restart re-runs everything and appends duplicates -- which
+    # previously meant hand-computing the remainder after every eviction.
+    done = {(r["arm"], r["section_id"]) for r in writer.rows}
+    if done:
+        print(f"resuming: {len(done)} (arm, section) pairs already complete", flush=True)
+
     for arm in args.arms:
         print(f"\n=== arm {arm} ===", flush=True)
         for section_id in sections:
+            if (arm, section_id) in done:
+                print(f"  {arm:9s} {section_id} skipped (already done)", flush=True)
+                continue
             started = time.perf_counter()
             row = run_arm(arm, section_id, config, args.device, args.attention_device)
             row["elapsed_seconds"] = time.perf_counter() - started
@@ -150,9 +185,18 @@ def main() -> None:
             print(f"  {arm:9s} {section_id} ARI={row['ari']:.4f} "
                   f"(stage1 sup={row['stage1_support_ari']:.4f})", flush=True)
 
+    # Merge rather than overwrite: these studies are run one arm per process to
+    # survive memory eviction, and a plain write left summary.json describing only
+    # whichever arm happened to finish last.
+    summary_path = results_dir(args.name) / "summary.json"
+    previous = json.loads(summary_path.read_text()) if summary_path.exists() else {}
+    all_arms = sorted(set(previous.get("arms", [])) | set(args.arms))
     save_json(args.name, {
-        "arms": args.arms, "sections": sections, "epochs": args.epochs,
+        **previous,
+        "arms": all_arms, "sections": sections, "epochs": args.epochs,
+        "arms_build_on": "ablation arm n (n_spatial_attention_plus_stage2)",
         "alpha": SMOOTH_ALPHA, "beta": MORPHOLOGY_BETA, "base_config": BEST,
+        "input_mask_rate": args.mask_rate, "encoder_hidden_dim": args.encoder_hidden,
         "n_rows": len(writer.rows),
     })
     print(f"\nwrote {len(writer.rows)} rows to outputs/sparc_align/{args.name}/", flush=True)

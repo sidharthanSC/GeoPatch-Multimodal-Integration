@@ -1,8 +1,7 @@
 {
   "arms": [
-    "arm_n_base",
-    "arm_n_input_smoothing",
-    "arm_n_latent_smoothing"
+    "arm_n_input_smoothing_masked",
+    "arm_n_masked"
   ],
   "sections": [
     "151507",
@@ -28,22 +27,18 @@
     "spatial_attention": true,
     "attention_epochs": 20
   },
-  "n_rows": 36,
+  "input_mask_rate": 0.1,
+  "n_rows": 24,
   "arms_build_on": "ablation arm n (n_spatial_attention_plus_stage2): spatial_topk_weight=0.75, spatial_attention=True, both phases",
   "results": {
-    "arm_n_base": {
-      "mean_ari": 0.37404256106860584,
-      "median_ari": 0.3680902602145808,
+    "arm_n_input_smoothing_masked": {
+      "mean_ari": 0.3952570302445016,
+      "median_ari": 0.4231500721183029,
       "n_sections": 12
     },
-    "arm_n_input_smoothing": {
-      "mean_ari": 0.4060818670565333,
-      "median_ari": 0.41537101742776084,
-      "n_sections": 12
-    },
-    "arm_n_latent_smoothing": {
-      "mean_ari": 0.3856453118881384,
-      "median_ari": 0.38334770925811257,
+    "arm_n_masked": {
+      "mean_ari": 0.3728471046928206,
+      "median_ari": 0.365970157505877,
       "n_sections": 12
     }
   }
